@@ -1264,6 +1264,12 @@
     brand.innerHTML = '<div class="home-brand-nome">Memo List</div><div class="home-brand-sub">Cosa vuoi fare?</div>';
     cont.appendChild(brand);
 
+    // Banner "attiva notifiche": posto riservato qui, riempito in modo asincrono.
+    // Compare SOLO a chi non ha ancora le notifiche attive (stato 'inattive').
+    const bannerNotifSlot = document.createElement('div');
+    cont.appendChild(bannerNotifSlot);
+    renderBannerNotifiche(bannerNotifSlot);
+
     // "Oggi per te": scheletro animato finché non arrivano i dati.
     const oggiBox = document.createElement('div');
     oggiBox.className = 'home-oggi';
@@ -1484,6 +1490,33 @@
     btn.innerHTML = '<span style="display:inline-flex;vertical-align:-2px;margin-right:6px;">' + svg(IC.bell, 16) + '</span> Attiva su questo dispositivo';
     btn.onclick = attivaNotifichePush;
     box.appendChild(btn);
+  }
+
+  // Banner in Home che invita ad attivare le notifiche desktop.
+  // Nascosto per la sessione corrente (in memoria, niente storage) se l'utente preme la ✕.
+  let bannerNotifNascosto = false;
+  async function renderBannerNotifiche(slot) {
+    if (!slot) return;
+    slot.innerHTML = '';
+    if (bannerNotifNascosto) return;
+    let stato;
+    try { stato = await statoNotifichePush(); } catch (e) { return; }
+    if (stato !== 'inattive') return;   // mostra SOLO a chi non le ha attive (e può attivarle)
+    if (!slot.isConnected) return;      // l'utente ha lasciato la Home nel frattempo
+    const b = document.createElement('div');
+    b.style.cssText = 'display:flex; align-items:center; gap:12px; background:var(--card); border:1px solid #26305a; border-left:3px solid var(--blue); border-radius:14px; padding:12px 14px; margin:0 0 16px;';
+    b.innerHTML =
+      '<span style="color:var(--blue); display:inline-flex; flex:none;">' + svg(IC.bell, 22) + '</span>' +
+      '<div style="flex:1; min-width:0;">' +
+        '<div style="color:#fff; font-weight:700; font-size:14px;">Attiva le notifiche desktop</div>' +
+        '<div style="color:var(--muted); font-size:12px; margin-top:2px;">Ricevi i promemoria anche a sito chiuso.</div>' +
+      '</div>' +
+      '<button type="button" id="banner-notif-attiva" class="btn btn-primary" style="width:auto; padding:8px 14px; flex:none;">Attiva</button>' +
+      '<button type="button" id="banner-notif-chiudi" class="iconbtn" title="Nascondi" style="flex:none;"></button>';
+    slot.appendChild(b);
+    const btnX = b.querySelector('#banner-notif-chiudi'); if (btnX) btnX.innerHTML = svg(IC.x, 18);
+    const btnA = b.querySelector('#banner-notif-attiva'); if (btnA) btnA.onclick = () => switchModulo('profilo');
+    if (btnX) btnX.onclick = () => { bannerNotifNascosto = true; slot.innerHTML = ''; };
   }
 
   async function caricaProfilo() {
