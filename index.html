@@ -1389,6 +1389,103 @@
   // ====== PROFILO ======
   let profUtente = null, profAvatar = null, profGruppi = [], profGruppoSel = null, profMembri = [];
 
+  // ===== NOTIFICHE PUSH DESKTOP (web push) =====
+  // La chiave PUBBLICA VAPID può stare nel sito (non è segreta). La privata resta solo sul server (Edge Function, Milestone 2).
+  const VAPID_PUBLIC_KEY = 'BEmM5wZxFqUwLswsjx_WGGJryHWoFherb443SDBf05ZlPO78GQ_azDmBg0raVNzuTMFm57wBlDLQ9iI0SWxA7T0';
+
+  function pushSupportato() {
+    return ('serviceWorker' in navigator) && ('PushManager' in window) && ('Notification' in window);
+  }
+  function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const raw = atob(base64);
+    const arr = new Uint8Array(raw.length);
+    for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+    return arr;
+  }
+  async function statoNotifichePush() {
+    if (!pushSupportato()) return 'nonsupportato';
+    if (Notification.permission === 'denied') return 'negato';
+    try {
+      const reg = await navigator.serviceWorker.getRegistration();
+      const sub = reg && await reg.pushManager.getSubscription();
+      return sub ? 'attive' : 'inattive';
+    } catch (e) { return 'inattive'; }
+  }
+  async function salvaSubscriptionPush(sub) {
+    const j = sub.toJSON();
+    const { error } = await sb.from('web_push_subscriptions').upsert({
+      user_id: userId,
+      endpoint: sub.endpoint,
+      p256dh: j.keys && j.keys.p256dh,
+      auth: j.keys && j.keys.auth
+    }, { onConflict: 'endpoint' });
+    if (error) throw error;
+  }
+  async function attivaNotifichePush() {
+    if (!pushSupportato()) { homeToast('Questo browser non supporta le notifiche push'); return; }
+    try {
+      const reg = await navigator.serviceWorker.register('/sw.js');
+      const perm = await Notification.requestPermission();
+      if (perm !== 'granted') { homeToast('Permesso notifiche negato'); renderNotifichePush(); return; }
+      await navigator.serviceWorker.ready;
+      let sub = await reg.pushManager.getSubscription();
+      if (!sub) {
+        sub = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+        });
+      }
+      await salvaSubscriptionPush(sub);
+      homeToast('Notifiche attivate su questo dispositivo');
+    } catch (e) {
+      homeToast('Errore attivazione: ' + (e && e.message ? e.message : e));
+    }
+    renderNotifichePush();
+  }
+  async function disattivaNotifichePush() {
+    try {
+      const reg = await navigator.serviceWorker.getRegistration();
+      const sub = reg && await reg.pushManager.getSubscription();
+      if (sub) {
+        await sb.from('web_push_subscriptions').delete().eq('endpoint', sub.endpoint);
+        try { await sub.unsubscribe(); } catch (e) {}
+      }
+      homeToast('Notifiche disattivate su questo dispositivo');
+    } catch (e) { homeToast('Errore: ' + (e && e.message ? e.message : e)); }
+    renderNotifichePush();
+  }
+  async function renderNotifichePush() {
+    const box = $('prof-notifiche'); if (!box) return;
+    const stato = await statoNotifichePush();
+    box.innerHTML = '';
+    const desc = document.createElement('p'); desc.className = 'muted'; desc.style.cssText = 'font-size:13px; margin:0 0 10px;';
+    if (stato === 'nonsupportato') {
+      desc.textContent = 'Questo browser non supporta le notifiche push. Prova con Chrome, Edge o Firefox aggiornati.';
+      box.appendChild(desc); return;
+    }
+    if (stato === 'negato') {
+      desc.innerHTML = 'Il permesso è stato <b>bloccato</b> nelle impostazioni del browser. Per riattivarlo, consenti le notifiche per questo sito (icona del lucchetto nella barra degli indirizzi).';
+      box.appendChild(desc); return;
+    }
+    if (stato === 'attive') {
+      desc.innerHTML = '<span style="color:#4CAF50;font-weight:700;">✓ Attive su questo dispositivo.</span> Riceverai i promemoria anche a scheda chiusa.';
+      box.appendChild(desc);
+      const btn = document.createElement('button'); btn.className = 'btn btn-ghost'; btn.style.cssText = 'width:auto; padding:9px 14px;';
+      btn.textContent = 'Disattiva su questo dispositivo';
+      btn.onclick = disattivaNotifichePush;
+      box.appendChild(btn);
+      return;
+    }
+    desc.textContent = 'Ricevi i promemoria sul computer anche quando il sito è chiuso.';
+    box.appendChild(desc);
+    const btn = document.createElement('button'); btn.className = 'btn btn-green'; btn.style.cssText = 'width:auto; padding:10px 16px;';
+    btn.innerHTML = '<span style="display:inline-flex;vertical-align:-2px;margin-right:6px;">' + svg(IC.bell, 16) + '</span> Attiva su questo dispositivo';
+    btn.onclick = attivaNotifichePush;
+    box.appendChild(btn);
+  }
+
   async function caricaProfilo() {
     const cont = $('profilo-container');
     cont.innerHTML = '<p class="muted">Caricamento…</p>';
@@ -1561,6 +1658,15 @@
     $('prof-avatar').onclick = () => $('prof-file').click();
     $('prof-file').onchange = (e) => { const f = e.target.files && e.target.files[0]; if (f) profCambiaAvatar(f); };
     $('prof-logout').onclick = () => logout();
+
+    // notifiche push desktop
+    const hN = document.createElement('div'); hN.className = 'prof-sez';
+    hN.innerHTML = '<span style="color:#888780;display:inline-flex;">' + svg(IC.bell, 16) + '</span> Notifiche desktop';
+    cont.appendChild(hN);
+    const notifBox = document.createElement('div'); notifBox.id = 'prof-notifiche'; notifBox.style.cssText = 'margin:4px 0 10px;';
+    notifBox.innerHTML = '<p class="muted" style="font-size:13px;">Verifica…</p>';
+    cont.appendChild(notifBox);
+    renderNotifichePush();
 
     // gruppi
     const hG = document.createElement('div'); hG.className = 'prof-sez'; hG.innerHTML = '<span style="color:#888780;display:inline-flex;">' + svg(IC.users, 16) + '</span> I miei gruppi';
