@@ -168,6 +168,13 @@
   @keyframes scadutaPulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
   .scaduta-chip { display:inline-flex; align-items:center; gap:4px; color:#ff6b6b; font-weight:700; vertical-align:middle; animation:scadutaPulse 1.2s ease-in-out infinite; }
   @media (prefers-reduced-motion: reduce) { .scaduta-chip { animation:none; } }
+  /* Stato appuntamenti: a breve (arancione) / in corso (verde) / passato (grigio) */
+  .app-stato { display:inline-flex; align-items:center; gap:5px; font-weight:700; font-size:11px; padding:1px 9px; border-radius:999px; vertical-align:middle; letter-spacing:.2px; }
+  .app-stato-corso { color:#37d67a; background:rgba(55,214,122,.14); animation:scadutaPulse 1.2s ease-in-out infinite; }
+  .app-stato-breve { color:#EF9F27; background:rgba(239,159,39,.14); }
+  .app-stato-passato { color:#d67c72; background:rgba(214,124,114,.15); }
+  .item.app-passato { opacity:.6; }
+  @media (prefers-reduced-motion: reduce) { .app-stato-corso { animation:none; } }
   .home-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(230px, 1fr)); gap:12px; }
   .home-card { background:var(--card); border-radius:14px; padding:14px; cursor:pointer; border:1px solid transparent; }
   .home-card:hover { border-color:#2f5488; }
@@ -6183,6 +6190,32 @@
     const a = ora.split(':'), b = oraFine.split(':');
     return (parseInt(b[0]) * 60 + parseInt(b[1])) < (parseInt(a[0]) * 60 + parseInt(a[1]));
   }
+  // [STATO APP] Stato di un appuntamento nel tempo: prossimo / breve (≤1h all'inizio) / corso / passato.
+  // Senza ora_fine: finestra di 1 ora dall'inizio. Tutto il giorno (senza ore): fino alle 23:59.
+  function statoAppuntamento(a) {
+    if (!a || !a.data) return null;
+    const p = a.data.split('/'); if (p.length !== 3) return null;
+    const g = parseInt(p[0]), m = parseInt(p[1]) - 1, y = parseInt(p[2]);
+    if (isNaN(g) || isNaN(m) || isNaN(y)) return null;
+    const ora = a.ora || '', oraFine = a.ora_fine || '';
+    let inizio, fine;
+    if (ora) { const hm = ora.split(':'); inizio = new Date(y, m, g, parseInt(hm[0]), parseInt(hm[1]), 0); }
+    else { inizio = new Date(y, m, g, 0, 0, 0); }
+    if (oraFine) {
+      const hf = oraFine.split(':'); fine = new Date(y, m, g, parseInt(hf[0]), parseInt(hf[1]), 0);
+      if (terminaGiornoDopoWeb(ora, oraFine)) fine.setDate(fine.getDate() + 1);
+    } else if (ora) {
+      fine = new Date(inizio.getTime() + 60 * 60000);
+    } else {
+      fine = new Date(y, m, g, 23, 59, 59);
+    }
+    const now = new Date();
+    if (now > fine) return { stato: 'passato' };
+    if (now >= inizio) return { stato: 'corso' };
+    const minuti = Math.round((inizio - now) / 60000);
+    if (minuti <= 60) return { stato: 'breve', minuti: minuti };
+    return { stato: 'prossimo' };
+  }
   // Finestra di conferma in tema col sito (al posto del confirm() grigio del browser).
   function confermaModal(messaggio, opts) {
     opts = opts || {};
@@ -6502,6 +6535,13 @@
     mid.appendChild(titolo);
     const iconTxt = (icon, txt) => '<span style="display:inline-flex; align-items:center; gap:4px; vertical-align:middle;">' + svg(icon, 14) + '<span>' + escapeHtml(txt) + '</span></span>';
     const parti = [];
+    // [STATO APP] chip a breve / in corso / passato (il "prossimo" resta pulito, senza chip)
+    const stApp = statoAppuntamento(a);
+    if (stApp) {
+      if (stApp.stato === 'passato') { div.classList.add('app-passato'); parti.push('<span class="app-stato app-stato-passato">Passato</span>'); }
+      else if (stApp.stato === 'corso') parti.push('<span class="app-stato app-stato-corso">● In corso</span>');
+      else if (stApp.stato === 'breve') parti.push('<span class="app-stato app-stato-breve">● Tra ' + stApp.minuti + ' min</span>');
+    }
     if (a.data) parti.push(iconTxt(IC.calendar, conGiorno(a.data)));
     let orario = a.ora ? (a.ora + (a.ora_fine ? '–' + a.ora_fine : '')) : (a.ora_fine || '');
     if (terminaGiornoDopoWeb(a.ora, a.ora_fine)) orario += ' +1 giorno';
