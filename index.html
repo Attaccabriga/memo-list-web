@@ -798,6 +798,24 @@
             <input id="scad-nota" class="field" style="margin:0; flex:1;" placeholder="Nota (facoltativa)…" />
             <button id="scad-mic-nota" class="btn btn-ghost" style="width:auto; padding:8px 11px;" title="Detta la nota"></button>
           </div>
+          <!-- PROMEMORIA (multipli, come Appuntamenti) -->
+          <div id="scad-promem-sez" style="background:#111a30; border:1px solid #26305a; border-radius:12px; padding:12px 14px;">
+            <div style="font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; margin-bottom:10px;">Promemoria</div>
+            <div id="scad-promem-chips" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:6px;"></div>
+            <div id="scad-promem-vuoto" style="color:rgba(255,255,255,0.42); font-size:14px; margin-bottom:8px;">Nessun promemoria</div>
+            <div style="position:relative;">
+              <button id="scad-promem-add" type="button" style="background:none; border:none; color:var(--blue); font-size:13px; cursor:pointer; padding:6px 0 0;">+ Aggiungi promemoria</button>
+              <div id="scad-promem-menu" style="display:none; position:absolute; z-index:60; top:26px; left:0; min-width:230px; background:var(--card); border:1px solid #2f5488; border-radius:12px; overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,.45);"></div>
+            </div>
+            <div id="scad-promem-custom" style="display:none; margin-top:10px; padding-top:10px; border-top:1px dashed #2f5488;">
+              <div style="font-size:11px; color:var(--muted); margin-bottom:6px;">Data e ora a scelta:</div>
+              <div style="display:flex; gap:10px;">
+                <input id="scad-promem-data" class="field" type="date" style="flex:1; margin:0; color-scheme:dark;" />
+                <input id="scad-promem-ora" class="field" type="time" style="flex:1; margin:0;" />
+              </div>
+            </div>
+            <div style="font-size:11px; color:var(--muted); margin-top:8px;">Max 3 (di cui al più uno «a scelta»). L'avviso all'orario esatto arriva sempre.</div>
+          </div>
           <select id="scad-rip" class="field">
             <option value="nessuna">Nessuna ripetizione</option>
             <option value="giornaliero">Ogni giorno</option>
@@ -4675,8 +4693,8 @@
     box.innerHTML = '<p class="muted">Ricerca…</p>';
     const { data, error } = await sb.from('scadenze').select('id, titolo, data, ora, nota, completata, categoria, sottocategoria');
     if (error) { box.innerHTML = '<p class="err">Errore: ' + error.message + '</p>'; return; }
-    const nomeCat = (id) => { const c = SCAD_TREE.find(x => x.id === id); return c ? c.nome : ''; };
-    const nomeSub = (catId, subId) => { const c = SCAD_TREE.find(x => x.id === catId); const s = c && c.sub.find(y => y.id === subId); return s ? s.nome : ''; };
+    const nomeCat = (id) => { const c = scadTree.find(x => x.id === id); return c ? c.nome : ''; };
+    const nomeSub = (catId, subId) => { const c = scadTree.find(x => x.id === catId); const s = c && c.sub.find(y => y.id === subId); return s ? s.nome : ''; };
     const risultati = (data || []).filter(s =>
       (s.titolo || '').toLowerCase().includes(q) ||
       (s.nota || '').toLowerCase().includes(q) ||
@@ -5314,6 +5332,45 @@
   // ====== SCADENZE (tabella scadenze; categorie/sottocategorie dal JSON dell'app) ======
   const SCAD_TREE = [{"id":"lavoro","nome":"Lavoro","icona":"briefcase","richiede":true,"sub":[{"id":"scadenze_contrattuali","nome":"Scadenze contrattuali","icona":"file-text"},{"id":"pagamenti_fatture","nome":"Pagamenti fatture","icona":"receipt"},{"id":"pagamenti_in_entrata","nome":"Pagamenti in entrata","icona":"cash"},{"id":"documenti_lavoro","nome":"Documenti (rinnovi, certificati, corsi)","icona":"certificate"}]},{"id":"casa","nome":"Casa","icona":"home","richiede":true,"sub":[{"id":"bollette","nome":"Bollette","icona":"bulb"},{"id":"affitto_mutuo","nome":"Affitto / Mutuo","icona":"building-bank"},{"id":"condominio","nome":"Condominio","icona":"building-community"},{"id":"manutenzione_casa","nome":"Manutenzione","icona":"tool"},{"id":"abbonamenti","nome":"Abbonamenti","icona":"device-tv"},{"id":"assicurazioni_casa","nome":"Assicurazioni casa","icona":"shield"}]},{"id":"veicoli","nome":"Veicoli","icona":"car","richiede":true,"sub":[{"id":"bollo_auto","nome":"Bollo auto","icona":"license"},{"id":"assicurazione_auto","nome":"Assicurazione auto/moto","icona":"shield-check"},{"id":"revisione","nome":"Revisione","icona":"tools"},{"id":"tagliando","nome":"Tagliando","icona":"engine"},{"id":"multe","nome":"Multe / Sanzioni","icona":"alert-triangle"},{"id":"cambio_gomme","nome":"Cambio gomme","icona":"circle-dot"}]},{"id":"personale","nome":"Personale / Famiglia","icona":"users","richiede":false,"sub":[{"id":"documenti_personali","nome":"Documenti personali","icona":"id"},{"id":"viaggi","nome":"Viaggi / Prenotazioni","icona":"plane"},{"id":"eventi","nome":"Eventi / Promemoria","icona":"calendar"}]},{"id":"salute","nome":"Salute","icona":"heartbeat","richiede":false,"sub":[{"id":"visite_mediche","nome":"Visite mediche","icona":"stethoscope"},{"id":"farmaci","nome":"Farmaci","icona":"pill"},{"id":"controlli_periodici","nome":"Controlli periodici","icona":"heart"},{"id":"dentista","nome":"Dentista","icona":"dental"},{"id":"esami_analisi","nome":"Esami / Analisi","icona":"droplet"}]}];
   let scadCat = null, scadSub = null;
+  // [CATEGORIE SCAD CUSTOM] Albero effettivo delle Scadenze = base fissa (SCAD_TREE)
+  // + categorie/sottocategorie personalizzate create nell'app. Le custom sono
+  // salvate dall'app nella tabella Supabase 'categorie_scadenze_custom' (blob per
+  // utente). L'id di una custom e' il suo NOME; l'icona e' un'emoja (catIconHtml
+  // la rende come testo). Finche' non carichiamo il blob, scadTree = base fissa.
+  let scadTree = SCAD_TREE;
+  let scadCustomBlob = null;
+  function costruisciScadTree(custom) {
+    const base = SCAD_TREE.map(c => ({ ...c, sub: c.sub.map(s => ({ ...s })) }));   // clona la base fissa
+    if (!custom) return base;
+    // sottocategorie custom dentro categorie fisse (chiave = id categoria fissa, es. 'lavoro')
+    const perFissa = custom.subcatCustomPerFissa || {};
+    base.forEach(cat => {
+      (perFissa[cat.id] || []).forEach(s => {
+        const nome = (typeof s === 'string') ? s : (s && s.nome);
+        if (!nome || cat.sub.some(x => x.id === nome)) return;
+        cat.sub.push({ id: nome, nome: nome, icona: (s && typeof s === 'object' ? s.icona : null), custom: true });
+      });
+    });
+    // categorie custom intere (id = nome)
+    (custom.categorieCustom || []).forEach(cc => {
+      if (!cc || !cc.nome || base.some(x => x.id === cc.nome)) return;
+      const sub = (cc.sottocategorie || []).map(s => {
+        const nome = (typeof s === 'string') ? s : (s && s.nome);
+        return nome ? { id: nome, nome: nome, icona: (s && typeof s === 'object' ? s.icona : null), custom: true } : null;
+      }).filter(Boolean);
+      base.push({ id: cc.nome, nome: cc.nome, icona: cc.icona || null, richiede: true, sub: sub, custom: true });
+    });
+    return base;
+  }
+  async function caricaScadCustom() {
+    if (!userId) { scadTree = SCAD_TREE; return; }
+    try {
+      const { data, error } = await sb.from('categorie_scadenze_custom').select('dati').eq('user_id', userId).maybeSingle();
+      if (error) return;                              // in errore: mantieni l'albero attuale
+      scadCustomBlob = (data && data.dati) || null;
+      scadTree = costruisciScadTree(scadCustomBlob);
+    } catch (e) { /* rete giu': mantieni l'albero attuale */ }
+  }
 
   // Card riusabile (icona + nome a sinistra, conteggio a destra).
   function scadCard(icona, nome, tot, td, onClick) {
@@ -5380,9 +5437,10 @@
 
   async function caricaScadCategorie() {
     const cont = $('scad-cat-container'); cont.innerHTML = '<p class="muted">Caricamento…</p>';
+    await caricaScadCustom();   // [CATEGORIE SCAD CUSTOM] aggiorna scadTree con le personalizzazioni
     const { totCat, tdCat } = await scadConteggi();
     cont.innerHTML = '';
-    SCAD_TREE.forEach(cat => {
+    scadTree.forEach(cat => {
       cont.appendChild(scadCard(cat.icona, cat.nome, totCat[cat.id] || 0, tdCat[cat.id] || 0, () => apriScadCategoria(cat)));
     });
     // [CALENDARIO] se stiamo aprendo una scadenza precisa dal calendario, entra nella sua categoria+sottocategoria
@@ -5393,7 +5451,7 @@
   // La fase 2 (evidenziazione) avviene in renderScadLista, a elementi caricati.
   function calApriScadenzaSePendente() {
     if (!calApriTarget || calApriTarget.modulo !== 'scadenze') return;
-    const cat = SCAD_TREE.find(c => c.id === calApriTarget.categoria);
+    const cat = scadTree.find(c => c.id === calApriTarget.categoria);
     const sub = cat && (cat.sub || []).find(s => s.id === calApriTarget.sottocategoria);
     if (cat && sub) { apriScadCategoria(cat); apriScadSottocategoria(sub); }
     else calApriTarget = null;   // categoria/sottocategoria non trovata: resto sulle categorie
@@ -5432,6 +5490,8 @@
     scadInModificaObj = null;
     $('scad-salva').textContent = 'Aggiungi scadenza';
     $('scad-annulla-edit').classList.add('hidden');
+    // [PROMEMORIA SCAD] azzera il selettore promemoria
+    scadPromemScelti = []; if ($('scad-promem-data')) $('scad-promem-data').value = ''; if ($('scad-promem-ora')) $('scad-promem-ora').value = ''; toggleScadPromemMenu(false); renderScadPromem();
   }
 
   // [SOTTOATTIVITÀ SCAD] elenco in modifica nel popup + spunta diretta dalla riga.
@@ -5494,9 +5554,9 @@
     head.appendChild(close); card.appendChild(head);
     const row = document.createElement('div'); row.style.cssText = 'display:flex; gap:10px; margin:10px 0 14px;';
     const selCat = document.createElement('select'); selCat.className = 'field'; selCat.style.cssText = 'flex:1; margin:0;';
-    selCat.innerHTML = '<option value="">Categoria…</option>' + SCAD_TREE.map(c => '<option value="' + c.id + '">' + escapeHtml(c.nome) + '</option>').join('');
+    selCat.innerHTML = '<option value="">Categoria…</option>' + scadTree.map(c => '<option value="' + c.id + '">' + escapeHtml(c.nome) + '</option>').join('');
     const selSub = document.createElement('select'); selSub.className = 'field'; selSub.style.cssText = 'flex:1; margin:0;';
-    const fillSub = (catId) => { const cat = SCAD_TREE.find(c => c.id === catId); const subs = (cat && cat.sub) || []; selSub.innerHTML = '<option value="">Sottocategoria…</option>' + subs.map(x => '<option value="' + x.id + '">' + escapeHtml(x.nome) + '</option>').join(''); };
+    const fillSub = (catId) => { const cat = scadTree.find(c => c.id === catId); const subs = (cat && cat.sub) || []; selSub.innerHTML = '<option value="">Sottocategoria…</option>' + subs.map(x => '<option value="' + x.id + '">' + escapeHtml(x.nome) + '</option>').join(''); };
     selCat.value = scadCat ? scadCat.id : ''; fillSub(selCat.value); selSub.value = scadSub ? scadSub.id : '';
     selCat.onchange = () => fillSub(selCat.value);
     row.append(selCat, selSub); card.appendChild(row);
@@ -5607,6 +5667,8 @@
     if (s.ora) parti.push(iconTxt(IC.clock, s.ora));
     if (s.nota) parti.push('<span style="vertical-align:middle;">' + escapeHtml(s.nota) + '</span>');
     if (s.ripetizione && s.ripetizione !== 'nessuna') parti.push('<span style="color:#EF9F27; vertical-align:middle;">↻ ' + escapeHtml(labelRipScad(s)) + '</span>');
+    const promScad = riassuntoPromemApp(s);
+    if (promScad) parti.push('<span style="display:inline-flex; align-items:center; gap:4px; vertical-align:middle; color:#4f9deb;">' + svg(IC.bell, 13) + '<span>' + escapeHtml(promScad) + '</span></span>');
     if (parti.length) {
       const sub = document.createElement('div'); sub.className = 'muted'; sub.style.fontSize = '12px'; sub.style.marginTop = '3px';
       sub.innerHTML = parti.join('<span style="opacity:.5;">&nbsp;&nbsp;·&nbsp;&nbsp;</span>');
@@ -5679,7 +5741,7 @@
     if (!scadCat || !scadSub) return;
     const cont = $('scad-item-container'); cont.innerHTML = '<p class="muted">Caricamento…</p>';
     const { data, error } = await sb.from('scadenze')
-      .select('id, client_id, titolo, data, ora, nota, completata, completata_il, condiviso, user_id, ripetizione, giornomese, fine_tipo, fine_data, fine_conteggio, occorrenza_numero, genitore_client_id, regola_weekend, giorno_ancora, sottoattivita')
+      .select('id, client_id, titolo, data, ora, nota, completata, completata_il, condiviso, user_id, ripetizione, giornomese, fine_tipo, fine_data, fine_conteggio, occorrenza_numero, genitore_client_id, regola_weekend, giorno_ancora, sottoattivita, anticipo, datanotifica, oranotifica')
       .eq('categoria', scadCat.id).eq('sottocategoria', scadSub.id)
       .order('id', { ascending: true });
     if (error) { cont.innerHTML = '<p class="err">Errore: ' + error.message + '</p>'; return; }
@@ -5711,9 +5773,10 @@
     const nota = $('scad-nota').value.trim();
     const rip = leggiRipetizioneDalScadForm(data);
     if (!rip) return;   // errore di validazione già segnalato
+    const prom = leggiPromemScadForm();   // { anticipo, datanotifica, oranotifica }
     if (idScadInModifica) {
       if (!titolo) { homeToast('Scrivi il titolo'); return; }
-      const { error } = await sb.from('scadenze').update({ titolo, data, ora, nota, sottoattivita: scadSottoattivita, ...rip }).eq('id', idScadInModifica);
+      const { error } = await sb.from('scadenze').update({ titolo, data, ora, nota, sottoattivita: scadSottoattivita, anticipo: prom.anticipo, datanotifica: prom.datanotifica, oranotifica: prom.oranotifica, ...rip }).eq('id', idScadInModifica);
       if (error) { alert('Errore modifica scadenza: ' + error.message); return; }
       resetScadForm(); chiudiScadModal(); await caricaScadItems();
     } else {
@@ -5721,7 +5784,7 @@
       if (!titolo || !catId || !subId) { homeToast('Servono titolo, categoria e sottocategoria'); return; }
       const { error } = await sb.from('scadenze').insert([{
         client_id: uuid(), titolo, data, ora, nota, completata: false,
-        anticipo: 'nessuno', datanotifica: null, oranotifica: null, sottoattivita: scadSottoattivita, allegati: [],
+        anticipo: prom.anticipo, datanotifica: prom.datanotifica, oranotifica: prom.oranotifica, sottoattivita: scadSottoattivita, allegati: [],
         categoria: catId, sottocategoria: subId,
         genitore_client_id: null, occorrenza_numero: 1, user_id: userId, ...rip
       }]);
@@ -5749,6 +5812,11 @@
     aggiornaVisibilitaRipScad();
     scadSottoattivita = (s.sottoattivita || []).map(x => ({ testo: x.testo, completata: !!x.completata }));
     renderScadSottoattivita();
+    // [PROMEMORIA SCAD] ripopola il selettore promemoria dai dati della scadenza
+    scadPromemScelti = (s.anticipo && s.anticipo !== 'nessuno') ? String(s.anticipo).split(',').filter(Boolean) : [];
+    $('scad-promem-data').value = s.datanotifica ? dataAppToWeb(s.datanotifica) : '';
+    $('scad-promem-ora').value = s.oranotifica || '';
+    renderScadPromem();
     $('scad-salva').textContent = 'Salva modifiche';
     $('scad-annulla-edit').classList.remove('hidden');
     apriScadModal(true);
@@ -5766,16 +5834,16 @@
   function chiudiScadModal() { const m = $('scad-modal'); if (m) m.classList.add('hidden'); }
   // [DESTINAZIONE SCAD] riempie i menu categoria/sottocategoria del popup.
   function popolaScadDestCat() {
-    $('scad-dest-cat').innerHTML = '<option value="">Categoria…</option>' + SCAD_TREE.map(c => '<option value="' + c.id + '">' + escapeHtml(c.nome) + '</option>').join('');
+    $('scad-dest-cat').innerHTML = '<option value="">Categoria…</option>' + scadTree.map(c => '<option value="' + c.id + '">' + escapeHtml(c.nome) + '</option>').join('');
   }
   function popolaScadDestSub(catId) {
-    const cat = SCAD_TREE.find(c => c.id === catId);
+    const cat = scadTree.find(c => c.id === catId);
     const subs = (cat && cat.sub) || [];
     $('scad-dest-sub').innerHTML = '<option value="">Sottocategoria…</option>' + subs.map(s => '<option value="' + s.id + '">' + escapeHtml(s.nome) + '</option>').join('');
   }
   // Porta la vista sulla destinazione scelta (categoria + sottocategoria) e carica gli elementi.
   async function vaiADestinazioneScad(catId, subId) {
-    const cat = SCAD_TREE.find(c => c.id === catId);
+    const cat = scadTree.find(c => c.id === catId);
     const sub = cat && cat.sub.find(x => x.id === subId);
     if (!cat || !sub) return;
     scadCat = cat; scadSub = sub;
@@ -6019,6 +6087,61 @@
   function prefillPromemCustom() {
     if (!$('app-promem-data').value) $('app-promem-data').value = oggiWeb();
     if (!$('app-promem-ora').value) { const d = new Date(); $('app-promem-ora').value = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); }
+  }
+
+  // --- Promemoria SCADENZE: stesso meccanismo degli Appuntamenti (ids 'scad-promem-*'),
+  //     riusa opzioni/costanti/etichette generiche. Non tocca il set degli Appuntamenti. ---
+  let scadPromemScelti = [];
+  function renderScadPromem() {
+    const chips = $('scad-promem-chips'); if (!chips) return;
+    chips.innerHTML = '';
+    scadPromemScelti.forEach(id => {
+      const c = document.createElement('span');
+      c.style.cssText = 'display:inline-flex;align-items:center;gap:7px;background:rgba(79,157,235,0.16);border:1px solid rgba(79,157,235,0.4);color:#dbeafe;border-radius:999px;padding:6px 10px 6px 12px;font-size:13px;';
+      let txt = appPromemLabel(id);
+      if (id === 'custom') { const d = $('scad-promem-data').value, o = $('scad-promem-ora').value; txt = (d || o) ? ('A scelta' + (o ? ' ' + o : '')) : appPromemLabel('custom'); }
+      const t = document.createElement('span'); t.textContent = txt; c.appendChild(t);
+      const x = document.createElement('span'); x.textContent = '✕';
+      x.style.cssText = 'cursor:pointer;display:inline-flex;width:16px;height:16px;align-items:center;justify-content:center;border-radius:50%;background:rgba(255,255,255,0.08);color:#cdd6f4;font-size:12px;';
+      x.onclick = () => { scadPromemScelti = scadPromemScelti.filter(i => i !== id); if (id === 'custom') { $('scad-promem-data').value = ''; $('scad-promem-ora').value = ''; } renderScadPromem(); };
+      c.appendChild(x);
+      chips.appendChild(c);
+    });
+    $('scad-promem-vuoto').style.display = scadPromemScelti.length ? 'none' : 'block';
+    $('scad-promem-custom').style.display = scadPromemScelti.includes('custom') ? 'block' : 'none';
+    const add = $('scad-promem-add');
+    add.disabled = scadPromemScelti.length >= APP_PROMEM_MAX;
+    add.style.opacity = add.disabled ? '0.5' : '1';
+    add.textContent = add.disabled ? '+ Aggiungi promemoria (max 3)' : '+ Aggiungi promemoria';
+  }
+  function toggleScadPromemMenu(force) {
+    const m = $('scad-promem-menu'); if (!m) return;
+    const apri = (force !== undefined) ? force : (m.style.display === 'none');
+    if (apri && scadPromemScelti.length >= APP_PROMEM_MAX) return;
+    if (!apri) { m.style.display = 'none'; return; }
+    m.innerHTML = '';
+    APP_PROMEM_OPZIONI.forEach(o => {
+      const gia = scadPromemScelti.includes(o.id);
+      const el = document.createElement('div');
+      el.style.cssText = 'padding:11px 14px;font-size:14px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.05);color:' + (gia ? '#5a6187' : '#dbe3ff') + ';';
+      el.textContent = o.label + (gia ? '  ✓' : '');
+      if (!gia) el.onclick = (e) => { e.stopPropagation(); scadPromemScelti.push(o.id); if (o.id === 'custom') prefillPromemScadCustom(); toggleScadPromemMenu(false); renderScadPromem(); };
+      m.appendChild(el);
+    });
+    m.style.display = 'block';
+  }
+  function leggiPromemScadForm() {
+    if (!scadPromemScelti.length) return { anticipo: 'nessuno', datanotifica: null, oranotifica: null };
+    let datanotifica = null, oranotifica = null;
+    if (scadPromemScelti.includes('custom')) {
+      datanotifica = dataWebToApp($('scad-promem-data').value) || null;
+      oranotifica = $('scad-promem-ora').value || null;
+    }
+    return { anticipo: scadPromemScelti.join(','), datanotifica, oranotifica };
+  }
+  function prefillPromemScadCustom() {
+    if (!$('scad-promem-data').value) $('scad-promem-data').value = oggiWeb();
+    if (!$('scad-promem-ora').value) { const d = new Date(); $('scad-promem-ora').value = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); }
   }
   // "HH:MM" + 1 ora (rientra a 00 dopo le 23).
   function oraPiu1(hhmm) {
@@ -6853,6 +6976,12 @@
   $('app-promem-data').addEventListener('change', renderAppPromem);
   $('app-promem-ora').addEventListener('change', renderAppPromem);
   document.addEventListener('click', () => toggleAppPromemMenu(false));
+  $('scad-promem-add').addEventListener('click', (e) => { e.stopPropagation(); toggleScadPromemMenu(); });
+  $('scad-promem-menu').addEventListener('click', (e) => e.stopPropagation());
+  $('scad-promem-data').addEventListener('change', renderScadPromem);
+  $('scad-promem-ora').addEventListener('change', renderScadPromem);
+  document.addEventListener('click', () => toggleScadPromemMenu(false));
+  renderScadPromem();
   $('app-ora').addEventListener('change', () => { const v = $('app-ora').value; if (v && !$('app-ora-fine').value) $('app-ora-fine').value = oraPiu1(v); });
   renderAppPromem();
 
