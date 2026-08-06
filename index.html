@@ -164,6 +164,10 @@
   .home-oggi-tag { color:var(--muted); font-size:10px; letter-spacing:.3px; }
   .home-oggi-item.fatto { opacity:0.55; }
   .home-oggi-item.fatto .home-oggi-testo { text-decoration:line-through; }
+  /* Evidenza "scaduta" (rosso + leggero lampeggio) come nell'app */
+  @keyframes scadutaPulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
+  .scaduta-chip { display:inline-flex; align-items:center; gap:4px; color:#ff6b6b; font-weight:700; vertical-align:middle; animation:scadutaPulse 1.2s ease-in-out infinite; }
+  @media (prefers-reduced-motion: reduce) { .scaduta-chip { animation:none; } }
   .home-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(230px, 1fr)); gap:12px; }
   .home-card { background:var(--card); border-radius:14px; padding:14px; cursor:pointer; border:1px solid transparent; }
   .home-card:hover { border-color:#2f5488; }
@@ -4922,10 +4926,12 @@
     mid.onclick = () => selezionaMemo(m, div);
     const testo = document.createElement('div'); testo.className = 'nome' + (m.completato ? ' done' : ''); testo.textContent = m.testo;
     mid.appendChild(testo);
-    const iconTxt = (icon, txt) => '<span style="display:inline-flex; align-items:center; gap:4px; vertical-align:middle;">' + svg(icon, 14) + '<span>' + escapeHtml(txt) + '</span></span>';
+    const iconTxt = (icon, txt, col) => '<span style="display:inline-flex; align-items:center; gap:4px; vertical-align:middle;' + (col ? 'color:' + col + ';' : '') + '">' + svg(icon, 14) + '<span>' + escapeHtml(txt) + '</span></span>';
+    const scaduto = !m.completato && memoScaduta(m.data, m.ora);
     const parti = [];
-    if (m.data) parti.push(iconTxt(IC.calendar, conGiorno(m.data)));
-    if (m.ora) parti.push(iconTxt(IC.clock, m.ora));
+    if (scaduto) parti.push('<span class="scaduta-chip">' + svg(ico('alert-triangle'), 13) + '<span>Scaduta</span></span>');
+    if (m.data) parti.push(iconTxt(IC.calendar, conGiorno(m.data), scaduto ? '#ff6b6b' : null));
+    if (m.ora) parti.push(iconTxt(IC.clock, m.ora, scaduto ? '#ff6b6b' : null));
     const rlMemo = labelRipMemo(m);
     if (rlMemo) parti.push('<span style="vertical-align:middle; color:#4CAF50;">' + escapeHtml(rlMemo) + '</span>');
     if (m.nota) parti.push('<span style="vertical-align:middle;">' + escapeHtml(m.nota) + '</span>');
@@ -5682,10 +5688,12 @@
     const mid = document.createElement('div'); mid.style.flex = '1';
     const titolo = document.createElement('div'); titolo.className = 'nome' + (s.completata ? ' done' : ''); titolo.textContent = s.titolo;
     mid.appendChild(titolo);
-    const iconTxt = (icon, txt) => '<span style="display:inline-flex; align-items:center; gap:4px; vertical-align:middle;">' + svg(icon, 14) + '<span>' + escapeHtml(txt) + '</span></span>';
+    const iconTxt = (icon, txt, col) => '<span style="display:inline-flex; align-items:center; gap:4px; vertical-align:middle;' + (col ? 'color:' + col + ';' : '') + '">' + svg(icon, 14) + '<span>' + escapeHtml(txt) + '</span></span>';
+    const scaduto = !s.completata && memoScaduta(s.data, s.ora);
     const parti = [];
-    if (s.data) parti.push(iconTxt(IC.calendar, conGiorno(s.data)));
-    if (s.ora) parti.push(iconTxt(IC.clock, s.ora));
+    if (scaduto) parti.push('<span class="scaduta-chip">' + svg(ico('alert-triangle'), 13) + '<span>Scaduta</span></span>');
+    if (s.data) parti.push(iconTxt(IC.calendar, conGiorno(s.data), scaduto ? '#ff6b6b' : null));
+    if (s.ora) parti.push(iconTxt(IC.clock, s.ora, scaduto ? '#ff6b6b' : null));
     if (s.nota) parti.push('<span style="vertical-align:middle;">' + escapeHtml(s.nota) + '</span>');
     if (s.ripetizione && s.ripetizione !== 'nessuna') parti.push('<span style="color:#EF9F27; vertical-align:middle;">↻ ' + escapeHtml(labelRipScad(s)) + '</span>');
     const promScad = riassuntoPromemApp(s);
