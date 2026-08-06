@@ -300,6 +300,16 @@
   .caltl-fatto { opacity:0.55; text-decoration:line-through; }
   @keyframes calPulse { 0% { box-shadow:0 0 0 2px var(--blue), 0 0 16px rgba(79,157,235,.55); background:rgba(79,157,235,.20); } 100% { box-shadow:0 0 0 0 rgba(79,157,235,0); background:transparent; } }
   .cal-evidenzia { animation:calPulse 4s ease-out; border-radius:10px; }
+  /* Avviso "riapri l'app per i promemoria" */
+  .prom-hint { position:fixed; left:50%; bottom:18px; transform:translateX(-50%) translateY(12px); z-index:9999; display:flex; align-items:center; gap:10px; max-width:calc(100vw - 24px); background:#232342; border:1px solid #2f5488; border-left:4px solid var(--blue); border-radius:12px; padding:10px 12px; box-shadow:0 10px 30px rgba(0,0,0,.5); color:#e6e6e6; font-size:13px; opacity:0; transition:opacity .3s ease, transform .3s ease; }
+  .prom-hint.on { opacity:1; transform:translateX(-50%) translateY(0); }
+  .prom-hint.via { opacity:0; }
+  .prom-hint-ic { color:var(--blue); display:inline-flex; flex:none; }
+  .prom-hint-txt { flex:1; min-width:0; line-height:1.3; }
+  .prom-hint-no { background:transparent; border:none; color:var(--blue); font-size:12px; font-weight:600; cursor:pointer; white-space:nowrap; flex:none; padding:4px 6px; }
+  .prom-hint-no:hover { text-decoration:underline; }
+  .prom-hint-x { background:transparent; border:none; color:#8b90b0; cursor:pointer; display:inline-flex; flex:none; padding:2px; }
+  .prom-hint-x:hover { color:#fff; }
   .caltl-now { position:absolute; left:0; right:0; height:0; }
   .caltl-now-line { position:absolute; right:0; top:0; height:2px; background:#4f9deb; }
   .caltl-now-dot { position:absolute; top:-4px; width:10px; height:10px; border-radius:50%; background:#4f9deb; }
@@ -1765,6 +1775,23 @@
     cont.appendChild(notifBox);
     renderNotifichePush();
 
+    // preferenza: avviso "riapri l'app per i promemoria" (stessa chiave usata dall'avviso)
+    let hintOff = false;
+    try { hintOff = localStorage.getItem('promemoria_hint_off') === '1'; } catch (e) {}
+    const prefRow = document.createElement('label');
+    prefRow.style.cssText = 'display:flex; align-items:flex-start; gap:10px; margin:2px 0 12px; cursor:pointer; font-size:13px; color:#c9cde8; line-height:1.35;';
+    const prefChk = document.createElement('input'); prefChk.type = 'checkbox'; prefChk.className = 'chk'; prefChk.checked = !hintOff; prefChk.style.marginTop = '2px';
+    prefChk.onchange = () => {
+      try {
+        if (prefChk.checked) { localStorage.removeItem('promemoria_hint_off'); promHintMostrato = false; }
+        else { localStorage.setItem('promemoria_hint_off', '1'); }
+      } catch (e) {}
+    };
+    const prefTxt = document.createElement('span');
+    prefTxt.textContent = 'Mostra l\'avviso «riapri l\'app per i promemoria» quando aggiungo, modifico o elimino qualcosa dal sito';
+    prefRow.appendChild(prefChk); prefRow.appendChild(prefTxt);
+    cont.appendChild(prefRow);
+
     // gruppi
     const hG = document.createElement('div'); hG.className = 'prof-sez'; hG.innerHTML = '<span style="color:#888780;display:inline-flex;">' + svg(IC.users, 16) + '</span> I miei gruppi';
     cont.appendChild(hG);
@@ -2571,6 +2598,30 @@
       el.classList.add('cal-evidenzia');
       setTimeout(() => el.classList.remove('cal-evidenzia'), 4200);
     }, 60);
+  }
+
+  // [PROMEMORIA→APP] Avviso discreto: dopo aver aggiunto/modificato/eliminato un
+  // elemento dal web, le "sveglie" dei promemoria sul telefono vengono ri-armate
+  // solo quando l'app si risincronizza. Ricordiamo di riaprirla. Una volta per
+  // sessione; il "Non mostrarlo più" viene ricordato nel browser.
+  let promHintMostrato = false;
+  function mostraPromemoriaHint() {
+    try { if (localStorage.getItem('promemoria_hint_off') === '1') return; } catch (e) {}
+    if (promHintMostrato || document.getElementById('prom-hint')) return;
+    promHintMostrato = true;
+    const bar = document.createElement('div');
+    bar.id = 'prom-hint'; bar.className = 'prom-hint';
+    bar.innerHTML =
+      '<span class="prom-hint-ic">' + svg(IC.bell, 18) + '</span>' +
+      '<span class="prom-hint-txt">Per ricevere il promemoria sul telefono, ricordati di riaprire l\'app Memo List.</span>' +
+      '<button class="prom-hint-no" id="prom-hint-no">Non mostrarlo più</button>' +
+      '<button class="prom-hint-x" id="prom-hint-x" aria-label="Chiudi">' + svg(IC.x, 16) + '</button>';
+    document.body.appendChild(bar);
+    const chiudi = () => { if (bar.parentNode) bar.parentNode.removeChild(bar); };
+    bar.querySelector('#prom-hint-x').onclick = chiudi;
+    bar.querySelector('#prom-hint-no').onclick = () => { try { localStorage.setItem('promemoria_hint_off', '1'); } catch (e) {} chiudi(); };
+    setTimeout(() => { bar.classList.add('via'); setTimeout(chiudi, 400); }, 9000);
+    requestAnimationFrame(() => bar.classList.add('on'));
   }
 
   // Vista timeline. Per ora gestisce il GIORNO (1 colonna); 3 giorni / Settimana
@@ -5020,6 +5071,7 @@
     resetMemoForm();
     await caricaMemoItems();
     $('memo-testo').focus();
+    mostraPromemoriaHint();
   }
 
   function apriModificaMemo(m) {
@@ -5144,6 +5196,7 @@
     renderMemoLista();
     const { error } = await sb.from('todos_scadenza').delete().eq('id', id);
     if (error) { alert('Errore eliminazione: ' + error.message); await caricaMemoItems(); }
+    else mostraPromemoriaHint();
   }
 
   // [ALLEGATI MEMO] Se sto già modificando un memo uso il suo codice; se è nuovo
@@ -5676,6 +5729,7 @@
       resetScadForm(); chiudiScadModal();
       await vaiADestinazioneScad(catId, subId);   // mostra la destinazione con la nuova scadenza
     }
+    mostraPromemoriaHint();
   }
 
   function apriModificaScad(s) {
@@ -5774,6 +5828,7 @@
     renderScadLista();
     const { error } = await sb.from('scadenze').delete().eq('id', id);
     if (error) { alert('Errore eliminazione: ' + error.message); await caricaScadItems(); }
+    else mostraPromemoriaHint();
   }
 
   // [ALLEGATI SCAD] mappa: client_id della scadenza -> suoi documenti collegati.
@@ -6425,6 +6480,7 @@
     resetAppForm();
     await caricaAppuntamenti();
     $('app-titolo').focus();
+    mostraPromemoriaHint();
   }
 
   function apriModificaApp(a) {
@@ -6456,6 +6512,7 @@
     renderAppLista();
     const { error } = await sb.from('appuntamenti').delete().eq('id', a.id);
     if (error) { alert('Errore eliminazione: ' + error.message); await caricaAppuntamenti(); }
+    else mostraPromemoriaHint();
   }
 
   function apriEliminaAppScope(a) {
