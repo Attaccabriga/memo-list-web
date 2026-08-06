@@ -276,6 +276,53 @@
   .cal-ev-orafine { color:#8b90b0; font-size:12px; font-weight:400; }
   .cal-ev-tit { flex:1; color:#fff; font-size:15px; min-width:0; }
   .cal-ev-tag { color:#888; font-size:10px; letter-spacing:.3px; flex:none; }
+  /* ===== CALENDARIO — viste timeline (Giorno / 3 giorni / Settimana) ===== */
+  .caltl-switch { display:flex; gap:6px; margin-bottom:12px; flex-wrap:wrap; }
+  .caltl-pill { background:#1c1c30; border:1px solid #2a2f55; color:#8b90b0; border-radius:999px; padding:6px 14px; font-size:13px; font-weight:600; cursor:pointer; }
+  .caltl-pill:hover { background:#232342; }
+  .caltl-pill.on { background:var(--blue); border-color:var(--blue); color:#fff; }
+  .caltl-sub { display:flex; align-items:center; gap:8px; margin-bottom:12px; }
+  .caltl-tit { flex:1; text-align:center; color:#fff; font-size:16px; font-weight:700; }
+  .caltl-senza { border-bottom:1px solid #26264a; padding:2px 0 10px; margin-bottom:8px; }
+  .caltl-senza-tit { color:#6b7194; font-size:11px; margin-bottom:4px; }
+  .caltl-senza-row { display:flex; align-items:center; gap:8px; padding:4px 0; font-size:13px; font-weight:600; cursor:pointer; }
+  .caltl-senza-txt { flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .caltl-scroll { position:relative; max-height:62vh; overflow-y:auto; overflow-x:hidden; background:#16213e; border:1px solid #20203c; border-radius:10px; }
+  .caltl-body { position:relative; }
+  .caltl-hline { position:absolute; right:0; height:1px; background:#26264a; }
+  .caltl-hlabel { position:absolute; left:0; text-align:right; color:#8b90b0; font-size:12px; }
+  .caltl-appt { position:absolute; border-left:3px solid; border-radius:6px; padding:3px 8px; overflow:hidden; cursor:pointer; }
+  .caltl-appt-tit { color:#fff; font-size:13px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .caltl-appt-ore { color:rgba(255,255,255,0.6); font-size:11px; }
+  .caltl-inst { position:absolute; display:flex; align-items:center; gap:6px; cursor:pointer; }
+  .caltl-inst-ora { font-size:13px; font-weight:600; }
+  .caltl-inst-tit { flex:1; min-width:0; font-size:13px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .caltl-fatto { opacity:0.55; text-decoration:line-through; }
+  @keyframes calPulse { 0% { box-shadow:0 0 0 2px var(--blue), 0 0 16px rgba(79,157,235,.55); background:rgba(79,157,235,.20); } 100% { box-shadow:0 0 0 0 rgba(79,157,235,0); background:transparent; } }
+  .cal-evidenzia { animation:calPulse 4s ease-out; border-radius:10px; }
+  .caltl-now { position:absolute; left:0; right:0; height:0; }
+  .caltl-now-line { position:absolute; right:0; top:0; height:2px; background:#4f9deb; }
+  .caltl-now-dot { position:absolute; top:-4px; width:10px; height:10px; border-radius:50%; background:#4f9deb; }
+  .caltl-now-lab { position:absolute; left:0; top:-6px; text-align:right; color:#4f9deb; font-size:11px; font-weight:700; }
+  /* viste multi-giorno (3 giorni / Settimana) */
+  .caltl-mh { display:flex; border-bottom:1px solid #26264a; padding-bottom:4px; margin-bottom:6px; }
+  .caltl-mh-col { flex:1; min-width:0; display:flex; flex-direction:column; align-items:center; gap:2px; padding-top:4px; cursor:pointer; }
+  .caltl-mh-dow { color:#8b90b0; font-size:10px; }
+  .caltl-mh-dow.oggi { color:#4f9deb; }
+  .caltl-mh-num { width:22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:#e6e6e6; font-size:13px; font-weight:600; }
+  .caltl-mh-num.oggi { background:#4f9deb; color:#fff; }
+  .caltl-mh-dots { display:flex; gap:2px; height:7px; }
+  .caltl-mh-dot { width:5px; height:5px; border-radius:50%; }
+  .caltl-sep { position:absolute; top:0; bottom:0; width:1px; background:#20203c; }
+  .caltl-minst { position:absolute; display:flex; align-items:center; gap:5px; width:var(--cw); height:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:10px; font-weight:600; cursor:pointer; }
+  .caltl-minst-ora { flex:none; }
+  .caltl-minst-tit { overflow:hidden; text-overflow:ellipsis; }
+  .caltl-minst:hover { width:auto; max-width:60vw; height:auto; overflow:visible; z-index:30; background:#1c1c30; padding:2px 8px; border-radius:6px; box-shadow:0 3px 10px rgba(0,0,0,.5); }
+  .caltl-minst:hover .caltl-minst-tit { overflow:visible; text-overflow:clip; }
+  .caltl-appt.mini { padding:1px 4px; }
+  .caltl-appt.mini .caltl-appt-tit { font-size:10px; }
+  .caltl-appt.mini .caltl-appt-ore { font-size:9px; }
+  .caltl-appt:hover { filter:brightness(1.18); }
   /* ===== RICETTARIO ===== */
   .ric-card { background:var(--card2); border-left:4px solid #D4537E; border-radius:12px; padding:14px 16px; margin-bottom:10px; display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
   .ric-card-body { flex:1; min-width:0; cursor:pointer; }
@@ -2303,7 +2350,7 @@
   }
 
   // ====== CALENDARIO ======
-  let calMese, calAnno, calSelGG, calApp = [], calScad = [], calMemo = [];
+  let calMese, calAnno, calSelGG, calApp = [], calScad = [], calMemo = [], calVista = 'mese';
   const calFiltri = { appuntamento: true, scadenza: true, memo: true };
   const CAL_COLORI = { appuntamento: '#378ADD', scadenza: '#E24B4A', memo: '#27AE60' };
   const CAL_MESI = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
@@ -2329,8 +2376,8 @@
     calMese = oggi.getMonth(); calAnno = oggi.getFullYear(); calSelGG = calFmt(oggi);
     const [aRes, sRes, mRes] = await Promise.all([
       sb.from('appuntamenti').select('id, titolo, data, ora, ora_fine'),
-      sb.from('scadenze').select('id, titolo, data, ora, completata'),
-      sb.from('todos_scadenza').select('id, testo, data, ora, completato'),
+      sb.from('scadenze').select('id, titolo, data, ora, completata, categoria, sottocategoria'),
+      sb.from('todos_scadenza').select('id, testo, data, ora, completato, categoria'),
     ]);
     calApp = aRes.data || []; calScad = sRes.data || []; calMemo = mRes.data || [];
     renderCalendario();
@@ -2348,9 +2395,9 @@
 
   function calEventiGiorno(gg) {
     const g = calNorm(gg); const out = [];
-    if (calFiltri.appuntamento) calApp.forEach(a => { if (calNorm(a.data) === g) out.push({ tipo: 'appuntamento', titolo: a.titolo || 'Appuntamento', ora: a.ora || null, oraFine: a.ora_fine || null, colore: CAL_COLORI.appuntamento, etichetta: 'Appuntamento', modulo: 'appuntamenti' }); });
-    if (calFiltri.scadenza) calScad.forEach(s => { if (calNorm(s.data) === g) out.push({ tipo: 'scadenza', titolo: s.titolo || 'Scadenza', ora: s.ora || null, colore: CAL_COLORI.scadenza, etichetta: 'Scadenza', modulo: 'scadenze' }); });
-    if (calFiltri.memo) calMemo.forEach(m => { if (calNorm(m.data) === g) out.push({ tipo: 'memo', titolo: m.testo || 'Memo', ora: m.ora || null, colore: CAL_COLORI.memo, etichetta: 'Memo', modulo: 'memo' }); });
+    if (calFiltri.appuntamento) calApp.forEach(a => { if (calNorm(a.data) === g) out.push({ tipo: 'appuntamento', id: a.id, titolo: a.titolo || 'Appuntamento', ora: a.ora || null, oraFine: a.ora_fine || null, colore: CAL_COLORI.appuntamento, etichetta: 'Appuntamento', modulo: 'appuntamenti', fatto: false }); });
+    if (calFiltri.scadenza) calScad.forEach(s => { if (calNorm(s.data) === g) out.push({ tipo: 'scadenza', id: s.id, titolo: s.titolo || 'Scadenza', ora: s.ora || null, colore: CAL_COLORI.scadenza, etichetta: 'Scadenza', modulo: 'scadenze', fatto: !!s.completata, categoria: s.categoria, sottocategoria: s.sottocategoria }); });
+    if (calFiltri.memo) calMemo.forEach(m => { if (calNorm(m.data) === g) out.push({ tipo: 'memo', id: m.id, titolo: m.testo || 'Memo', ora: m.ora || null, colore: CAL_COLORI.memo, etichetta: 'Memo', modulo: 'memo', fatto: !!m.completato, categoria: m.categoria }); });
     out.sort((x, y) => { if (x.ora && y.ora) return x.ora.localeCompare(y.ora); if (x.ora) return -1; if (y.ora) return 1; return 0; });
     return out;
   }
@@ -2372,6 +2419,10 @@
 
   function renderCalendario() {
     const root = $('cal-root'); root.innerHTML = '';
+    if (calTlTimer) { clearInterval(calTlTimer); calTlTimer = null; }
+    root.appendChild(calBarraViste());
+    if (calVista === 'giorno') { renderTimeline(root); return; }
+    if (calVista === 'tre' || calVista === 'settimana') { renderTimelineMulti(root, calVista === 'settimana' ? 7 : 3); return; }
     // intestazione mese
     const head = document.createElement('div'); head.className = 'cal-head';
     head.innerHTML = '<button class="cal-nav" id="cal-prev">' + svg(IC.chevronLeft, 20) + '</button>' +
@@ -2434,7 +2485,7 @@
           '<div class="cal-ev-ora">' + (ev.ora ? escapeHtml(ev.ora) : '<span style="color:' + ev.colore + ';display:inline-flex;">' + svg(ico(ev.tipo === 'scadenza' ? 'alarm' : ev.tipo === 'appuntamento' ? 'calendar-event' : 'bell'), 18) + '</span>') + (ev.oraFine ? '<div class="cal-ev-orafine">' + escapeHtml(ev.oraFine) + '</div>' : '') + '</div>' +
           '<div class="cal-ev-tit">' + escapeHtml(ev.titolo) + '</div>' +
           '<div class="cal-ev-tag">' + ev.etichetta + '</div>';
-        r.onclick = () => switchModulo(ev.modulo);
+        r.onclick = () => calVaiAElemento(ev);
         lista.appendChild(r);
       });
     }
@@ -2450,6 +2501,384 @@
     const t = $('app-titolo');
     t.focus();
     t.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  // ====== [WEB] VISTE TIMELINE DEL CALENDARIO (Giorno / 3 giorni / Settimana) ======
+  // Portiamo sul web la stessa logica dell'app (components/VistaGiorno.tsx +
+  // lib/timelineEventi.ts): la posizione verticale di un evento e' data dai
+  // MINUTI dalla mezzanotte -> top = min/60*TL_H. Gli APPUNTAMENTI hanno durata
+  // (blocco alto quanto durano); SCADENZE e MEMO sono un ISTANTE (sola scritta).
+  const TL_H = 52;         // altezza di un'ora in pixel (vista Giorno)
+  const TL_HM = 44;        // altezza di un'ora nelle viste multi-giorno (piu' compatta)
+  const TL_GUTTER = 54;    // larghezza della colonna delle ore a sinistra
+  let calTlTimer = null;   // intervallo che muove la linea "ora corrente"
+
+  // 'gg/mm/aaaa' -> Date (mezzanotte locale)
+  function tlData(gg) { const p = (gg || '').split('/'); return new Date(+p[2], +p[1] - 1, +p[0]); }
+  // sposta 'gg/mm/aaaa' di N giorni e ritorna 'gg/mm/aaaa'
+  function tlSposta(gg, delta) { const d = tlData(gg); d.setDate(d.getDate() + delta); return calFmt(d); }
+  // "HH:MM" -> minuti dalla mezzanotte (09:30 -> 570); null se assente
+  function tlMinuti(ora) { if (!ora) return null; const p = String(ora).split(':'); return (+p[0] || 0) * 60 + (+p[1] || 0); }
+  // minuti -> "HH:MM"
+  function tlHhmm(min) { return String(Math.floor(min / 60)).padStart(2, '0') + ':' + String(min % 60).padStart(2, '0'); }
+
+  // Barra a pillole per scegliere la vista (Mese / Giorno / 3 giorni / Settimana).
+  function calBarraViste() {
+    const bar = document.createElement('div'); bar.className = 'caltl-switch';
+    [['mese', 'Mese'], ['giorno', 'Giorno'], ['tre', '3 giorni'], ['settimana', 'Settimana']].forEach(([k, label]) => {
+      const b = document.createElement('button');
+      b.className = 'caltl-pill' + (calVista === k ? ' on' : '');
+      b.textContent = label;
+      b.onclick = () => { calVista = k; renderCalendario(); };
+      bar.appendChild(b);
+    });
+    return bar;
+  }
+
+  // Barra filtri condivisa (Appuntamenti / Scadenze / Memo) - usa lo stato calFiltri.
+  function calBarraFiltri() {
+    const filt = document.createElement('div'); filt.className = 'cal-filtri';
+    [['appuntamento', 'Appuntamenti'], ['scadenza', 'Scadenze'], ['memo', 'Memo']].forEach(([k, label]) => {
+      const b = document.createElement('button'); b.className = 'cal-filtro' + (calFiltri[k] ? ' on' : '');
+      b.style.borderLeftColor = calFiltri[k] ? CAL_COLORI[k] : '#444a66';
+      b.innerHTML = '<span class="cal-dot" style="background:' + CAL_COLORI[k] + '"></span>' + label;
+      b.onclick = () => { calFiltri[k] = !calFiltri[k]; renderCalendario(); };
+      filt.appendChild(b);
+    });
+    return filt;
+  }
+
+  // ---- apertura mirata di un elemento dal calendario ----
+  // Moduli con "apri elemento preciso" gia' implementato; gli altri, per ora,
+  // aprono solo la sezione (verranno aggiunti nei prossimi step).
+  const CAL_DEEP = { appuntamenti: true, memo: true, scadenze: true };
+  let calApriTarget = null; // { modulo, id, categoria, sottocategoria } in attesa di evidenziazione dopo il render
+  function calVaiAElemento(ev) {
+    if (ev && ev.id != null && CAL_DEEP[ev.modulo]) calApriTarget = { modulo: ev.modulo, id: String(ev.id), categoria: ev.categoria, sottocategoria: ev.sottocategoria };
+    switchModulo(ev.modulo);
+  }
+  // Da chiamare alla fine del render di una sezione: se c'e' un elemento in attesa
+  // per QUESTA sezione, lo porta in vista e lo evidenzia per un attimo.
+  function calEvidenziaSePendente(modulo, container, onFound) {
+    if (!calApriTarget || calApriTarget.modulo !== modulo || !container) return;
+    const id = calApriTarget.id; calApriTarget = null;
+    setTimeout(() => {
+      let el = null;
+      container.querySelectorAll('[data-cal-id]').forEach(n => { if (n.getAttribute('data-cal-id') === id) el = n; });
+      if (!el) return;
+      if (typeof onFound === 'function') { try { onFound(el, id); } catch (e) {} }  // es. Memo: apre il suo Dettaglio
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.classList.add('cal-evidenzia');
+      setTimeout(() => el.classList.remove('cal-evidenzia'), 4200);
+    }, 60);
+  }
+
+  // Vista timeline. Per ora gestisce il GIORNO (1 colonna); 3 giorni / Settimana
+  // arriveranno nello step successivo riusando questa stessa matematica.
+  function renderTimeline(root) {
+    if (calTlTimer) { clearInterval(calTlTimer); calTlTimer = null; }
+    const oggiIt = calFmt(new Date());
+
+    // --- sotto-header: frecce giorno + titolo + Oggi ---
+    const sub = document.createElement('div'); sub.className = 'caltl-sub';
+    const prev = document.createElement('button'); prev.className = 'cal-nav'; prev.innerHTML = svg(IC.chevronLeft, 20);
+    const tit = document.createElement('div'); tit.className = 'caltl-tit'; tit.textContent = calTitoloGiorno(calSelGG);
+    const next = document.createElement('button'); next.className = 'cal-nav'; next.innerHTML = svg(IC.chevronRight, 20);
+    const oggiBtn = document.createElement('button'); oggiBtn.className = 'cal-oggi'; oggiBtn.textContent = 'Oggi';
+    prev.onclick = () => { calSelGG = tlSposta(calSelGG, -1); renderCalendario(); };
+    next.onclick = () => { calSelGG = tlSposta(calSelGG, +1); renderCalendario(); };
+    oggiBtn.onclick = () => { calSelGG = oggiIt; renderCalendario(); };
+    sub.appendChild(prev); sub.appendChild(tit); sub.appendChild(next); sub.appendChild(oggiBtn);
+    root.appendChild(sub);
+
+    // --- filtri (stesso stato del mese) ---
+    root.appendChild(calBarraFiltri());
+
+    // --- eventi del giorno divisi in "con ora" e "senza ora" ---
+    const eventi = calEventiGiorno(calSelGG);   // gia' ordinati per ora crescente
+    const conOra = [], senzaOra = [];
+    eventi.forEach(ev => { (tlMinuti(ev.ora) == null ? senzaOra : conOra).push(ev); });
+
+    // striscia "Senza orario"
+    if (senzaOra.length) {
+      const box = document.createElement('div'); box.className = 'caltl-senza';
+      const tt = document.createElement('div'); tt.className = 'caltl-senza-tit'; tt.textContent = 'Senza orario';
+      box.appendChild(tt);
+      senzaOra.forEach(ev => {
+        const r = document.createElement('div'); r.className = 'caltl-senza-row'; r.style.color = ev.colore;
+        if (ev.fatto) r.classList.add('caltl-fatto');
+        r.innerHTML = '<span style="display:inline-flex;">' + svg(ico(ev.tipo === 'scadenza' ? 'alarm' : 'bell'), 14) + '</span>' +
+          '<span class="caltl-senza-txt">' + escapeHtml(ev.titolo) + '</span>';
+        r.onclick = () => calVaiAElemento(ev);
+        box.appendChild(r);
+      });
+      root.appendChild(box);
+    }
+
+    // --- corpo scrollabile con la griglia oraria ---
+    const scroll = document.createElement('div'); scroll.className = 'caltl-scroll';
+    const body = document.createElement('div'); body.className = 'caltl-body';
+    body.style.height = (24 * TL_H + 16) + 'px';
+
+    // righe orarie + etichette
+    for (let h = 0; h <= 24; h++) {
+      const line = document.createElement('div'); line.className = 'caltl-hline';
+      line.style.top = (h * TL_H) + 'px'; line.style.left = TL_GUTTER + 'px';
+      body.appendChild(line);
+      if (h < 24) {
+        const lab = document.createElement('div'); lab.className = 'caltl-hlabel';
+        lab.style.top = (h * TL_H - 7) + 'px'; lab.style.width = (TL_GUTTER - 10) + 'px';
+        lab.textContent = String(h).padStart(2, '0') + ':00';
+        body.appendChild(lab);
+      }
+    }
+
+    // eventi: appuntamenti = blocco alto quanto durano; memo/scadenze = sola scritta
+    let ultimaBaseTesto = -Infinity;
+    conOra.forEach(ev => {
+      const inizio = tlMinuti(ev.ora);
+      if (ev.tipo === 'appuntamento') {
+        let fine = tlMinuti(ev.oraFine);
+        if (fine == null || fine <= inizio) fine = inizio + 60; // difesa: almeno 1h
+        const top = inizio / 60 * TL_H;
+        const alt = Math.max((fine - inizio) / 60 * TL_H, 26);
+        const b = document.createElement('div'); b.className = 'caltl-appt';
+        b.style.top = top + 'px'; b.style.height = alt + 'px';
+        b.style.left = (TL_GUTTER + 8) + 'px'; b.style.right = '10px';
+        b.style.background = ev.colore + '22'; b.style.borderLeftColor = ev.colore;
+        b.innerHTML = '<div class="caltl-appt-tit">' + escapeHtml(ev.titolo) + '</div>' +
+          '<div class="caltl-appt-ore">' + tlHhmm(inizio) + ' – ' + tlHhmm(fine) + '</div>';
+        b.onclick = () => calVaiAElemento(ev);
+        body.appendChild(b);
+      } else {
+        let top = inizio / 60 * TL_H - 9;
+        if (top < ultimaBaseTesto + 4) top = ultimaBaseTesto + 4; // evita sovrapposizioni testo
+        ultimaBaseTesto = top + 22;
+        const r = document.createElement('div'); r.className = 'caltl-inst'; r.style.color = ev.colore;
+        if (ev.fatto) r.classList.add('caltl-fatto');
+        r.style.top = top + 'px'; r.style.left = (TL_GUTTER + 6) + 'px'; r.style.right = '10px';
+        r.innerHTML = '<span style="display:inline-flex;">' + svg(ico(ev.tipo === 'scadenza' ? 'alarm' : 'bell'), 14) + '</span>' +
+          '<span class="caltl-inst-ora">' + tlHhmm(inizio) + '</span>' +
+          '<span class="caltl-inst-tit">' + escapeHtml(ev.titolo) + '</span>';
+        r.onclick = () => calVaiAElemento(ev);
+        body.appendChild(r);
+      }
+    });
+
+    scroll.appendChild(body);
+    root.appendChild(scroll);
+
+    // --- linea "ora corrente" (solo se il giorno mostrato e' oggi) ---
+    const disegnaNow = () => {
+      let now = body.querySelector('.caltl-now');
+      if (calSelGG !== calFmt(new Date())) { if (now) now.remove(); return; }
+      const d = new Date(); const nowMin = d.getHours() * 60 + d.getMinutes();
+      if (!now) {
+        now = document.createElement('div'); now.className = 'caltl-now';
+        // etichetta ora nella colonna a sinistra (gutter); linea+pallino dal gutter in poi
+        now.innerHTML = '<div class="caltl-now-lab" style="width:' + (TL_GUTTER - 10) + 'px;"></div>' +
+          '<div class="caltl-now-line" style="left:' + TL_GUTTER + 'px;"></div>' +
+          '<div class="caltl-now-dot" style="left:' + (TL_GUTTER - 3) + 'px;"></div>';
+        body.appendChild(now);
+      }
+      now.style.top = (nowMin / 60 * TL_H) + 'px';
+      now.querySelector('.caltl-now-lab').textContent = tlHhmm(nowMin);
+    };
+    disegnaNow();
+
+    // --- auto-scroll: oggi -> ora corrente al ~40% dall'alto; altrimenti primo evento -1h ---
+    setTimeout(() => {
+      let target;
+      if (calSelGG === oggiIt) {
+        const d = new Date();
+        target = (d.getHours() * 60 + d.getMinutes()) / 60 * TL_H - scroll.clientHeight * 0.4;
+      } else {
+        const primaOra = conOra.length ? Math.floor(tlMinuti(conOra[0].ora) / 60) : 7;
+        target = (primaOra - 1) * TL_H;
+      }
+      scroll.scrollTop = Math.max(0, target);
+    }, 0);
+
+    // --- aggiorna la linea "ora" ogni minuto senza ridisegnare tutto (non perde lo scroll) ---
+    calTlTimer = setInterval(() => {
+      const mod = document.getElementById('mod-calendario');
+      if (!mod || mod.classList.contains('hidden') || calVista === 'mese') { clearInterval(calTlTimer); calTlTimer = null; return; }
+      disegnaNow();
+    }, 60000);
+  }
+
+  // ---- helper per le viste multi-giorno ----
+  // giorni della vista: 3 giorni = da calSelGG in poi; Settimana = Lun->Dom della settimana di calSelGG
+  function tlGiorniVista(n) {
+    if (n === 7) {
+      const d = tlData(calSelGG); const dow = (d.getDay() + 6) % 7; // 0=Lun ... 6=Dom
+      const lun = tlSposta(calSelGG, -dow);
+      return Array.from({ length: 7 }, (_, i) => tlSposta(lun, i));
+    }
+    return Array.from({ length: n }, (_, i) => tlSposta(calSelGG, i));
+  }
+  function tlAbbrGiorno(gg) { const d = tlData(gg); return (CAL_GIORNI[d.getDay()] || '').slice(0, 3); }
+  function tlAbbrMese(m0) { return (CAL_MESI[m0] || '').slice(0, 3); }
+  function tlTitoloIntervallo(giorni) {
+    const p0 = giorni[0].split('/'), pL = giorni[giorni.length - 1].split('/');
+    const d0 = +p0[0], m0 = +p0[1], dL = +pL[0], mL = +pL[1];
+    if (m0 === mL) return d0 + ' – ' + dL + ' ' + tlAbbrMese(m0 - 1);
+    return d0 + ' ' + tlAbbrMese(m0 - 1) + ' – ' + dL + ' ' + tlAbbrMese(mL - 1);
+  }
+
+  // Vista 3 GIORNI / SETTIMANA: la stessa timeline della vista Giorno ripetuta
+  // su piu' colonne affiancate, con la riga dei giorni in alto. n = 3 oppure 7.
+  function renderTimelineMulti(root, n) {
+    if (calTlTimer) { clearInterval(calTlTimer); calTlTimer = null; }
+    const oggiIt = calFmt(new Date());
+    const giorni = tlGiorniVista(n);
+    // posizione orizzontale di una colonna (calc CSS: il gutter e' fisso, il resto si divide in n)
+    const colLeft = (i) => 'calc(' + TL_GUTTER + 'px + ' + i + ' * (100% - ' + TL_GUTTER + 'px) / ' + n + ')';
+    const colW = '(100% - ' + TL_GUTTER + 'px) / ' + n;
+
+    // sotto-header: frecce (spostano di n giorni) + intervallo + Oggi
+    const sub = document.createElement('div'); sub.className = 'caltl-sub';
+    const prev = document.createElement('button'); prev.className = 'cal-nav'; prev.innerHTML = svg(IC.chevronLeft, 20);
+    const tit = document.createElement('div'); tit.className = 'caltl-tit'; tit.textContent = tlTitoloIntervallo(giorni);
+    const next = document.createElement('button'); next.className = 'cal-nav'; next.innerHTML = svg(IC.chevronRight, 20);
+    const oggiBtn = document.createElement('button'); oggiBtn.className = 'cal-oggi'; oggiBtn.textContent = 'Oggi';
+    prev.onclick = () => { calSelGG = tlSposta(calSelGG, -n); renderCalendario(); };
+    next.onclick = () => { calSelGG = tlSposta(calSelGG, +n); renderCalendario(); };
+    oggiBtn.onclick = () => { calSelGG = oggiIt; renderCalendario(); };
+    sub.appendChild(prev); sub.appendChild(tit); sub.appendChild(next); sub.appendChild(oggiBtn);
+    root.appendChild(sub);
+
+    // filtri condivisi
+    root.appendChild(calBarraFiltri());
+
+    // eventi per ciascun giorno, divisi in con/senza ora
+    const perGiorno = giorni.map(gg => {
+      const conOra = [], senzaOra = [];
+      calEventiGiorno(gg).forEach(e => { (tlMinuti(e.ora) == null ? senzaOra : conOra).push(e); });
+      return { gg, conOra, senzaOra };
+    });
+
+    // riga intestazione giorni (dow + numero + pallini "senza orario"); tap -> apre quel giorno
+    const gh = document.createElement('div'); gh.className = 'caltl-mh'; gh.style.paddingLeft = TL_GUTTER + 'px';
+    perGiorno.forEach(g => {
+      const isToday = g.gg === oggiIt;
+      const col = document.createElement('div'); col.className = 'caltl-mh-col';
+      const dow = document.createElement('div'); dow.className = 'caltl-mh-dow' + (isToday ? ' oggi' : ''); dow.textContent = tlAbbrGiorno(g.gg);
+      const num = document.createElement('div'); num.className = 'caltl-mh-num' + (isToday ? ' oggi' : ''); num.textContent = String(+g.gg.split('/')[0]);
+      const dots = document.createElement('div'); dots.className = 'caltl-mh-dots';
+      g.senzaOra.slice(0, 4).forEach(e => { const s = document.createElement('span'); s.className = 'caltl-mh-dot'; s.style.background = e.colore; dots.appendChild(s); });
+      col.appendChild(dow); col.appendChild(num); col.appendChild(dots);
+      col.onclick = () => { calVista = 'giorno'; calSelGG = g.gg; renderCalendario(); };
+      gh.appendChild(col);
+    });
+    root.appendChild(gh);
+
+    // corpo scrollabile
+    const scroll = document.createElement('div'); scroll.className = 'caltl-scroll';
+    const body = document.createElement('div'); body.className = 'caltl-body';
+    body.style.height = (24 * TL_HM + 16) + 'px';
+
+    // righe orarie + etichette (solo "HH")
+    for (let h = 0; h <= 24; h++) {
+      const line = document.createElement('div'); line.className = 'caltl-hline';
+      line.style.top = (h * TL_HM) + 'px'; line.style.left = TL_GUTTER + 'px';
+      body.appendChild(line);
+      if (h < 24) {
+        const lab = document.createElement('div'); lab.className = 'caltl-hlabel';
+        lab.style.top = (h * TL_HM - 7) + 'px'; lab.style.width = (TL_GUTTER - 10) + 'px';
+        lab.textContent = String(h).padStart(2, '0');
+        body.appendChild(lab);
+      }
+    }
+
+    // separatori verticali fra le colonne
+    for (let i = 0; i <= n; i++) {
+      const sep = document.createElement('div'); sep.className = 'caltl-sep'; sep.style.left = colLeft(i);
+      body.appendChild(sep);
+    }
+
+    // eventi di ogni colonna: appuntamenti = blocco, memo/scadenze = scritta compatta.
+    // ultimaBaseTesto e' PER COLONNA: evita che le scritte ravvicinate si accavallino.
+    perGiorno.forEach((g, i) => {
+      let ultimaBaseTesto = -Infinity;
+      g.conOra.forEach(ev => {
+        const inizio = tlMinuti(ev.ora);
+        if (ev.tipo === 'appuntamento') {
+          let fine = tlMinuti(ev.oraFine);
+          if (fine == null || fine <= inizio) fine = inizio + 60;
+          const top = inizio / 60 * TL_HM;
+          const alt = Math.max((fine - inizio) / 60 * TL_HM, 14);
+          const b = document.createElement('div'); b.className = 'caltl-appt mini';
+          b.style.top = top + 'px'; b.style.height = alt + 'px';
+          b.style.left = 'calc(' + colLeft(i) + ' + 1px)';
+          b.style.width = 'calc(' + colW + ' - 2px)';
+          b.style.background = ev.colore + '22'; b.style.borderLeftColor = ev.colore;
+          b.title = ev.titolo;   // titolo completo come tooltip (le colonne strette troncano)
+          let html = '';
+          if (alt >= 20) html += '<div class="caltl-appt-tit">' + escapeHtml(ev.titolo) + '</div>';
+          if (alt >= 38) html += '<div class="caltl-appt-ore">' + tlHhmm(inizio) + '</div>';
+          b.innerHTML = html;
+          b.onclick = () => calVaiAElemento(ev);
+          body.appendChild(b);
+        } else {
+          // memo/scadenza = scritta compatta; al passaggio del mouse si apre per intero
+          let top = inizio / 60 * TL_HM - 8;
+          if (top < ultimaBaseTesto + 2) top = ultimaBaseTesto + 2;
+          ultimaBaseTesto = top + 16;
+          const r = document.createElement('div'); r.className = 'caltl-minst'; r.style.color = ev.colore;
+          if (ev.fatto) r.classList.add('caltl-fatto');
+          r.style.top = top + 'px';
+          r.style.left = 'calc(' + colLeft(i) + ' + 2px)';
+          r.style.setProperty('--cw', 'calc(' + colW + ' - 4px)');
+          r.title = tlHhmm(inizio) + '  ' + ev.titolo;
+          r.innerHTML = '<span style="display:inline-flex;flex:none;">' + svg(ico(ev.tipo === 'scadenza' ? 'alarm' : 'bell'), 12) + '</span>' +
+            '<span class="caltl-minst-ora">' + tlHhmm(inizio) + '</span>' +
+            '<span class="caltl-minst-tit">' + escapeHtml(ev.titolo) + '</span>';
+          r.onclick = () => calVaiAElemento(ev);
+          body.appendChild(r);
+        }
+      });
+    });
+
+    scroll.appendChild(body); root.appendChild(scroll);
+
+    // linea "ora corrente" (se uno dei giorni e' oggi); pallino sulla colonna di oggi
+    const disegnaNow = () => {
+      let now = body.querySelector('.caltl-now');
+      const idx = giorni.indexOf(calFmt(new Date()));
+      if (idx < 0) { if (now) now.remove(); return; }
+      const d = new Date(); const nowMin = d.getHours() * 60 + d.getMinutes();
+      if (!now) {
+        now = document.createElement('div'); now.className = 'caltl-now';
+        now.innerHTML = '<div class="caltl-now-line" style="left:' + TL_GUTTER + 'px;"></div>' +
+          '<div class="caltl-now-dot" style="left:calc(' + colLeft(idx) + ' - 3px);"></div>';
+        body.appendChild(now);
+      }
+      now.style.top = (nowMin / 60 * TL_HM) + 'px';
+    };
+    disegnaNow();
+
+    // auto-scroll: se c'e' oggi -> ora corrente al ~40%; altrimenti primo evento -1h
+    setTimeout(() => {
+      let target;
+      if (giorni.indexOf(oggiIt) >= 0) {
+        const d = new Date();
+        target = (d.getHours() * 60 + d.getMinutes()) / 60 * TL_HM - scroll.clientHeight * 0.4;
+      } else {
+        let primo = Infinity;
+        perGiorno.forEach(g => { if (g.conOra.length) primo = Math.min(primo, tlMinuti(g.conOra[0].ora)); });
+        const primaOra = primo === Infinity ? 7 : Math.floor(primo / 60);
+        target = (primaOra - 1) * TL_HM;
+      }
+      scroll.scrollTop = Math.max(0, target);
+    }, 0);
+
+    // aggiorna la linea ogni minuto senza ridisegnare (mantiene lo scroll)
+    calTlTimer = setInterval(() => {
+      const mod = document.getElementById('mod-calendario');
+      if (!mod || mod.classList.contains('hidden') || calVista === 'mese' || calVista === 'giorno') { clearInterval(calTlTimer); calTlTimer = null; return; }
+      disegnaNow();
+    }, 60000);
   }
 
   // ====== RICETTARIO ======
@@ -4276,8 +4705,19 @@
       div.onclick = () => apriMemoCategoria(c);
       cont.appendChild(div);
     });
-    // [4 COLONNE] su schermo largo apri subito la prima categoria per riempire le colonne
-    if (memoWide() && !memoCatCorrente && cats.length) apriMemoCategoria(cats[0]);
+    // [CALENDARIO] se stiamo aprendo un memo preciso dal calendario, entra nella SUA categoria;
+    // altrimenti (schermo largo) apri la prima per riempire le colonne.
+    if (calApriTarget && calApriTarget.modulo === 'memo') calApriCategoriaMemoSePendente();
+    else if (memoWide() && !memoCatCorrente && cats.length) apriMemoCategoria(cats[0]);
+  }
+
+  // [CALENDARIO] fase 1 del deep-link Memo: entra nella categoria del memo in attesa.
+  // La fase 2 (evidenziazione) avviene in renderMemoLista, a elementi caricati.
+  function calApriCategoriaMemoSePendente() {
+    if (!calApriTarget || calApriTarget.modulo !== 'memo') return;
+    const c = (memoCategorieCaricate || []).find(x => x.nome === calApriTarget.categoria);
+    if (c) apriMemoCategoria(c);
+    else calApriTarget = null;   // categoria non trovata: resto sulle categorie
   }
 
   // ====== MEMO — ELEMENTI (todos_scadenza) ======
@@ -4384,6 +4824,7 @@
 
   function rigaMemo(m) {
     const div = document.createElement('div'); div.className = 'item'; div.style.alignItems = 'flex-start';
+    div.dataset.calId = m.id;   // [CALENDARIO] aggancio per l'apertura mirata dal calendario
     const chk = document.createElement('input');
     chk.type = 'checkbox'; chk.className = 'chk'; chk.checked = !!m.completato; chk.style.marginTop = '2px';
     chk.onchange = () => toggleMemo(m.id, chk.checked);
@@ -4491,6 +4932,11 @@
     } else if (memoWide() && filtrati.length) {
       selezionaMemo(filtrati[0], righe[0]);
     }
+    // [CALENDARIO] evidenzia il memo aperto dal calendario e ne apre il Dettaglio (memo cliccato, non il primo)
+    calEvidenziaSePendente('memo', cont, (el, id) => {
+      const m = (memoItemsCaricati || []).find(x => String(x.id) === id);
+      if (m) selezionaMemo(m, el);
+    });
   }
   async function caricaMemoItems() {
     if (!memoCatCorrente) return;
@@ -4886,6 +5332,18 @@
     SCAD_TREE.forEach(cat => {
       cont.appendChild(scadCard(cat.icona, cat.nome, totCat[cat.id] || 0, tdCat[cat.id] || 0, () => apriScadCategoria(cat)));
     });
+    // [CALENDARIO] se stiamo aprendo una scadenza precisa dal calendario, entra nella sua categoria+sottocategoria
+    if (calApriTarget && calApriTarget.modulo === 'scadenze') calApriScadenzaSePendente();
+  }
+
+  // [CALENDARIO] fase 1 del deep-link Scadenze: apre categoria e sottocategoria del target.
+  // La fase 2 (evidenziazione) avviene in renderScadLista, a elementi caricati.
+  function calApriScadenzaSePendente() {
+    if (!calApriTarget || calApriTarget.modulo !== 'scadenze') return;
+    const cat = SCAD_TREE.find(c => c.id === calApriTarget.categoria);
+    const sub = cat && (cat.sub || []).find(s => s.id === calApriTarget.sottocategoria);
+    if (cat && sub) { apriScadCategoria(cat); apriScadSottocategoria(sub); }
+    else calApriTarget = null;   // categoria/sottocategoria non trovata: resto sulle categorie
   }
 
   function apriScadCategoria(cat) {
@@ -5083,6 +5541,7 @@
 
   function rigaScad(s) {
     const div = document.createElement('div'); div.className = 'item'; div.style.alignItems = 'flex-start';
+    div.dataset.calId = s.id;   // [CALENDARIO] aggancio per l'apertura mirata dal calendario
     const chk = document.createElement('input');
     chk.type = 'checkbox'; chk.className = 'chk'; chk.checked = !!s.completata; chk.style.marginTop = '2px';
     chk.onchange = () => toggleScad(s, chk.checked);
@@ -5189,6 +5648,7 @@
     cont.innerHTML = '';
     $('scad-item-vuoto').classList.toggle('hidden', arr.length > 0);
     applicaFiltroScad(arr).forEach(s => cont.appendChild(rigaScad(s)));
+    calEvidenziaSePendente('scadenze', cont);   // [CALENDARIO] evidenzia la scadenza aperta dal calendario
   }
 
   async function salvaScad() {
@@ -5829,6 +6289,7 @@
 
   function rigaApp(a) {
     const div = document.createElement('div'); div.className = 'item'; div.style.alignItems = 'flex-start';
+    div.dataset.calId = a.id;   // [CALENDARIO] aggancio per l'apertura mirata dal calendario
     const mid = document.createElement('div'); mid.style.flex = '1';
     const titolo = document.createElement('div'); titolo.className = 'nome'; titolo.textContent = a.titolo;
     mid.appendChild(titolo);
@@ -5897,6 +6358,7 @@
     cont.innerHTML = '';
     $('app-item-vuoto').classList.toggle('hidden', arr.length > 0);
     ordinaApp(arr).forEach(a => cont.appendChild(rigaApp(a)));
+    calEvidenziaSePendente('appuntamenti', cont);   // [CALENDARIO] evidenzia l'elemento aperto dal calendario
   }
 
   async function caricaAppuntamenti() {
