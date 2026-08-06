@@ -162,6 +162,8 @@
   .home-oggi-ora { color:#e6e6e6; font-size:14px; font-weight:600; min-width:44px; }
   .home-oggi-testo { flex:1; color:#fff; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .home-oggi-tag { color:var(--muted); font-size:10px; letter-spacing:.3px; }
+  .home-oggi-item.fatto { opacity:0.55; }
+  .home-oggi-item.fatto .home-oggi-testo { text-decoration:line-through; }
   .home-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(230px, 1fr)); gap:12px; }
   .home-card { background:var(--card); border-radius:14px; padding:14px; cursor:pointer; border:1px solid transparent; }
   .home-card:hover { border-color:#2f5488; }
@@ -1407,8 +1409,7 @@
           scadenze: data.conteggi.scadenze || 0,
           spesa: data.conteggi.spesa || 0,
         });
-        const itemsOggi = (data.oggi || []).map(it => ({ testo: it.testo, ora: it.ora, colore: coloreOggi(it.key), etichetta: it.etichetta, key: it.key }));
-        renderOggiPerTe(oggiBox, itemsOggi);
+        caricaOggiPerTe(oggiBox, oggi);   // lista cliccabile con id/categoria (la RPC non li fornisce)
         usatoRpc = true;
       }
     } catch (e) { /* passa al paracadute qui sotto */ }
@@ -1419,8 +1420,8 @@
     try {
       [todoRes, memoRes, scadRes, appRes, listeRes] = await Promise.all([
         sb.from('todos').select('id, completato'),
-        sb.from('todos_scadenza').select('id, testo, data, ora, completato'),
-        sb.from('scadenze').select('id, titolo, data, ora, completata'),
+        sb.from('todos_scadenza').select('id, testo, data, ora, completato, categoria'),
+        sb.from('scadenze').select('id, titolo, data, ora, completata, categoria, sottocategoria'),
         sb.from('appuntamenti').select('id, titolo, data, ora'),
         sb.from('liste_spesa').select('id'),
       ]);
@@ -1437,10 +1438,10 @@
       scadenze: scad.filter(s => !s.completata).length,
     });
 
-    const memoOggi = memo.filter(m => !m.completato && m.data === oggi).map(m => ({ testo: m.testo, ora: m.ora, colore: '#EF9F27', etichetta: 'Memo', key: 'memo' }));
-    const scadOggi = scad.filter(s => !s.completata && s.data === oggi).map(s => ({ testo: s.titolo, ora: s.ora, colore: '#EF9F27', etichetta: 'Scadenza', key: 'scadenze' }));
-    const appOggiItems = appOggi.map(a => ({ testo: a.titolo, ora: a.ora, colore: '#378ADD', etichetta: 'Appuntamento', key: 'appuntamenti' }));
-    const itemsOggi = [...scadOggi, ...appOggiItems, ...memoOggi].sort((a, b) => (a.ora || '').localeCompare(b.ora || ''));
+    const memoOggi = memo.filter(m => m.data === oggi).map(m => ({ testo: m.testo, ora: m.ora, colore: '#EF9F27', etichetta: 'Memo', key: 'memo', id: m.id, categoria: m.categoria, fatto: !!m.completato }));
+    const scadOggi = scad.filter(s => s.data === oggi).map(s => ({ testo: s.titolo, ora: s.ora, colore: '#EF9F27', etichetta: 'Scadenza', key: 'scadenze', id: s.id, categoria: s.categoria, sottocategoria: s.sottocategoria, fatto: !!s.completata }));
+    const appOggiItems = appOggi.map(a => ({ testo: a.titolo, ora: a.ora, colore: '#378ADD', etichetta: 'Appuntamento', key: 'appuntamenti', id: a.id, fatto: false }));
+    const itemsOggi = [...scadOggi, ...appOggiItems, ...memoOggi].sort((a, b) => { if (!!a.fatto !== !!b.fatto) return a.fatto ? 1 : -1; return (a.ora || '').localeCompare(b.ora || ''); });
     renderOggiPerTe(oggiBox, itemsOggi);
 
     let spesaCount = 0;
@@ -1467,6 +1468,26 @@
     });
   }
 
+  // [OGGI PER TE] Costruisce la lista cliccabile del giorno con id/categoria/sottocategoria
+  // (la RPC get_home_data non li fornisce, ma servono per l'apertura mirata dell'elemento).
+  async function caricaOggiPerTe(oggiBox, oggi) {
+    try {
+      const [mRes, sRes, aRes] = await Promise.all([
+        sb.from('todos_scadenza').select('id, testo, data, ora, completato, categoria'),
+        sb.from('scadenze').select('id, titolo, data, ora, completata, categoria, sottocategoria'),
+        sb.from('appuntamenti').select('id, titolo, data, ora'),
+      ]);
+      if (!oggiBox.isConnected) return;
+      const memo = (mRes && mRes.data) || [], scad = (sRes && sRes.data) || [], app = (aRes && aRes.data) || [];
+      const memoOggi = memo.filter(m => m.data === oggi).map(m => ({ testo: m.testo, ora: m.ora, colore: '#EF9F27', etichetta: 'Memo', key: 'memo', id: m.id, categoria: m.categoria, fatto: !!m.completato }));
+      const scadOggi = scad.filter(s => s.data === oggi).map(s => ({ testo: s.titolo, ora: s.ora, colore: '#EF9F27', etichetta: 'Scadenza', key: 'scadenze', id: s.id, categoria: s.categoria, sottocategoria: s.sottocategoria, fatto: !!s.completata }));
+      const appOggiItems = app.filter(a => a.data === oggi).map(a => ({ testo: a.titolo, ora: a.ora, colore: '#378ADD', etichetta: 'Appuntamento', key: 'appuntamenti', id: a.id, fatto: false }));
+      // da fare in cima, fatti (barrati) in fondo; a parità, per orario
+      const items = [...scadOggi, ...appOggiItems, ...memoOggi].sort((a, b) => { if (!!a.fatto !== !!b.fatto) return a.fatto ? 1 : -1; return (a.ora || '').localeCompare(b.ora || ''); });
+      renderOggiPerTe(oggiBox, items);
+    } catch (e) { /* silenzioso: i conteggi restano comunque */ }
+  }
+
   // Sostituisce lo scheletro di "Oggi per te" col contenuto reale.
   function renderOggiPerTe(oggiBox, itemsOggi) {
     if (itemsOggi.length === 0) {
@@ -1475,13 +1496,13 @@
     }
     let h = '<div class="home-oggi-titolo">Oggi per te (' + itemsOggi.length + ')</div>';
     itemsOggi.forEach(it => {
-      h += '<div class="home-oggi-item" data-key="' + it.key + '" style="border-left-color:' + it.colore + '">' +
+      h += '<div class="home-oggi-item' + (it.fatto ? ' fatto' : '') + '" data-key="' + it.key + '" style="border-left-color:' + it.colore + '">' +
         (it.ora ? '<span class="home-oggi-ora">' + escapeHtml(it.ora) + '</span>' : '') +
         '<span class="home-oggi-testo">' + escapeHtml(it.testo || '') + '</span>' +
         '<span class="home-oggi-tag">' + it.etichetta + '</span></div>';
     });
     oggiBox.innerHTML = h;
-    oggiBox.querySelectorAll('.home-oggi-item').forEach(el => { el.onclick = () => switchModulo(el.getAttribute('data-key')); });
+    oggiBox.querySelectorAll('.home-oggi-item').forEach((el, i) => { const it = itemsOggi[i]; el.onclick = () => calVaiAElemento({ modulo: it.key, id: it.id, categoria: it.categoria, sottocategoria: it.sottocategoria }); });
   }
 
   // ====== PROFILO ======
