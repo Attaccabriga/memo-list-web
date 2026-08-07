@@ -5125,6 +5125,7 @@
     }
     resetMemoForm();
     await caricaMemoItems();
+    caricaMemoCategorie();   // [FIX CONTEGGI] aggiorna i numeri della colonna categorie
     $('memo-testo').focus();
     mostraPromemoriaHint();
   }
@@ -5242,6 +5243,7 @@
       }
     } catch (e) { /* non blocco la spunta se la generazione fallisce */ }
     if (ricorrente) await caricaMemoItems();   // riflette l'occorrenza generata/rimossa
+    caricaMemoCategorie();   // [FIX CONTEGGI] la spunta (e le occorrenze ricorrenti) cambiano i numeri
   }
 
   async function eliminaMemo(id) {
@@ -5252,6 +5254,7 @@
     const { error } = await sb.from('todos_scadenza').delete().eq('id', id);
     if (error) { alert('Errore eliminazione: ' + error.message); await caricaMemoItems(); }
     else mostraPromemoriaHint();
+    caricaMemoCategorie();   // [FIX CONTEGGI] aggiorna i numeri dopo l'eliminazione
   }
 
   // [ALLEGATI MEMO] Se sto già modificando un memo uso il suo codice; se è nuovo
@@ -5343,6 +5346,7 @@
     homeToast('Memo spostato');
     const { error } = await sb.from('todos_scadenza').update({ categoria }).eq('id', id);
     if (error) { homeToast('Errore spostamento: ' + error.message); await caricaMemoItems(); }
+    caricaMemoCategorie();   // [FIX CONTEGGI] cambiano sia la categoria di partenza sia quella di arrivo
   }
   function apriSpostaMemo(m) {
     const ov = document.createElement('div'); ov.className = 'modal-overlay';
@@ -7039,7 +7043,7 @@
   $('app-fine-tipo').onchange = aggiornaVisibilitaRipApp;
   $('app-data').addEventListener('input', aggiornaGiornoApp);
   $('app-data').addEventListener('change', aggiornaGiornoApp);
-  $('app-ora').addEventListener('change', autoOraFineApp);
+  $('app-ora').addEventListener('blur', autoOraFineApp);   // [FIX ORARIO] su 'blur' e non 'change': evita l'auto-fine su valori parziali mentre digiti (es. 10:03 -> 11:03)
   $('app-luogo').addEventListener('input', onLuogoInput);
   $('app-luogo').addEventListener('blur', () => setTimeout(chiudiSuggLuogo, 150));
   $('app-titolo').addEventListener('keydown', e => { if (e.key === 'Enter') salvaApp(); });
@@ -7054,7 +7058,6 @@
   $('scad-promem-ora').addEventListener('change', renderScadPromem);
   document.addEventListener('click', () => toggleScadPromemMenu(false));
   renderScadPromem();
-  $('app-ora').addEventListener('change', () => { const v = $('app-ora').value; if (v && !$('app-ora-fine').value) $('app-ora-fine').value = oraPiu1(v); });
   renderAppPromem();
 
   // ====== AVVIO ======
