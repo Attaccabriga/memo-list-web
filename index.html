@@ -1155,6 +1155,7 @@
 
   let userId = null;
   let listaCorrente = null;
+  let canaleSpesa = null;
   let recognition = null, micBuffer = '', micAttivo = false;
   let ordine = 'reparto';
   try { ordine = localStorage.getItem('ordine_spesa') || 'reparto'; } catch (e) {}
@@ -3831,7 +3832,34 @@
   }
 
   // ====== LISTE ======
-  function mostraListe(){ $('dettaglio-view').classList.add('hidden'); $('liste-view').classList.remove('hidden'); listaCorrente = null; }
+  function mostraListe(){ $('dettaglio-view').classList.add('hidden'); $('liste-view').classList.remove('hidden'); listaCorrente = null; fermaRealtimeSpesa(); }
+
+  // ====== REALTIME SPESA (broadcast 'spesa-sync', stesso canale dell'app) ======
+  // Il web entra nel canale 'spesa-sync': ascolta i cambiamenti (ricarica la lista
+  // aperta) e, dopo ogni sua scrittura, avvisa con 'lista_reload' (l'app lo gestisce
+  // gia'). Cosi' la spesa web<->telefono si sincronizza in tempo reale. Non dipende
+  // da FCM (viaggia su Supabase), quindi funziona anche senza VPN.
+  function avviaRealtimeSpesa() {
+    fermaRealtimeSpesa();
+    const onEvento = (payload) => {
+      if (!listaCorrente) return;
+      if (payload && payload.lista_id != null && payload.lista_id !== listaCorrente.id) return;
+      caricaArticoli(true);
+    };
+    canaleSpesa = sb.channel('spesa-sync')
+      .on('broadcast', { event: 'articolo_insert' }, ({ payload }) => onEvento(payload))
+      .on('broadcast', { event: 'articolo_update' }, ({ payload }) => onEvento(payload))
+      .on('broadcast', { event: 'articolo_delete' }, ({ payload }) => onEvento(payload))
+      .on('broadcast', { event: 'lista_reload' }, () => { if (listaCorrente) caricaArticoli(true); })
+      .subscribe();
+  }
+  function fermaRealtimeSpesa() {
+    if (canaleSpesa) { try { sb.removeChannel(canaleSpesa); } catch (e) {} canaleSpesa = null; }
+  }
+  function notificaCambioSpesa() {
+    if (!canaleSpesa || !listaCorrente) return;
+    try { canaleSpesa.send({ type: 'broadcast', event: 'lista_reload', payload: { lista_id: listaCorrente.id, user_id: userId } }); } catch (e) {}
+  }
 
   // Nome suggerito con la data (come nomeSuggeritoLista dell'app), es. "Spesa del 30 luglio".
   const MESI_IT = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre'];
@@ -3949,6 +3977,7 @@
     $('dettaglio-titolo').textContent = l.nome || '(senza nome)';
     $('sort-sel').value = ordine;
     await caricaArticoli();
+    avviaRealtimeSpesa();
     $('nuovo-articolo').focus();
   }
 
@@ -3978,6 +4007,7 @@
     if (numEl) numEl.textContent = fmtQta(v);
     const { error } = await sb.from('articoli_spesa').update({ quantita: v, unita: u }).eq('id', a.id);
     if (error) { alert('Errore quantità: ' + error.message); await caricaArticoli(); }
+    else notificaCambioSpesa();
   }
 
   function rigaArticolo(a) {
@@ -4027,8 +4057,8 @@
     return div;
   }
 
-  async function caricaArticoli() {
-    const cont = $('articoli-container'); cont.innerHTML = '<p class="muted">Caricamento…</p>';
+  async function caricaArticoli(silenzioso) {
+    const cont = $('articoli-container'); if (!silenzioso) cont.innerHTML = '<p class="muted">Caricamento…</p>';
     const { data, error } = await sb.from('articoli_spesa').select('id, nome, spuntato, quantita, unita').eq('lista_id', listaCorrente.id);
     if (error) { cont.innerHTML = '<p class="err">Errore: ' + error.message + '</p>'; return; }
     cont.innerHTML = '';
@@ -4077,6 +4107,7 @@
     const { error } = await sb.from('articoli_spesa').insert(rows);
     if (error) { alert('Errore aggiunta articolo: ' + error.message); return; }
     await caricaArticoli();
+    notificaCambioSpesa();
   }
   async function aggiungiArticolo() {
     const testo = $('nuovo-articolo').value.trim();
@@ -4149,12 +4180,14 @@
     const { error } = await sb.from('articoli_spesa').update({ spuntato }).eq('id', id);
     if (error) { alert('Errore: ' + error.message); }
     await caricaArticoli();
+    if (!error) notificaCambioSpesa();
   }
 
   async function eliminaArticolo(id) {
     const { error } = await sb.from('articoli_spesa').delete().eq('id', id);
     if (error) { alert('Errore eliminazione: ' + error.message); return; }
     await caricaArticoli();
+    notificaCambioSpesa();
   }
 
   // Rimuove in blocco tutti gli articoli spuntati della lista aperta (come "svuotaSpuntati" dell'app, ma con conferma).
@@ -4166,6 +4199,7 @@
     const { error } = await sb.from('articoli_spesa').delete().eq('lista_id', listaCorrente.id).eq('spuntato', true);
     if (error) { alert('Errore rimozione: ' + error.message); return; }
     await caricaArticoli();
+    notificaCambioSpesa();
   }
 
   // ====== SELETTORE ICONE (stessi gruppi dell'app: iconPickerData) ======
