@@ -1882,22 +1882,31 @@
     cont.appendChild(notifBox);
     renderNotifichePush();
 
-    // preferenza: avviso "riapri l'app per i promemoria" (stessa chiave usata dall'avviso)
-    let hintOff = false;
-    try { hintOff = localStorage.getItem('promemoria_hint_off') === '1'; } catch (e) {}
-    const prefRow = document.createElement('label');
-    prefRow.style.cssText = 'display:flex; align-items:flex-start; gap:10px; margin:2px 0 12px; cursor:pointer; font-size:13px; color:#c9cde8; line-height:1.35;';
-    const prefChk = document.createElement('input'); prefChk.type = 'checkbox'; prefChk.className = 'chk'; prefChk.checked = !hintOff; prefChk.style.marginTop = '2px';
-    prefChk.onchange = () => {
-      try {
-        if (prefChk.checked) { localStorage.removeItem('promemoria_hint_off'); promHintMostrato = false; }
-        else { localStorage.setItem('promemoria_hint_off', '1'); }
-      } catch (e) {}
-    };
-    const prefTxt = document.createElement('span');
-    prefTxt.textContent = 'Mostra l\'avviso «riapri l\'app per i promemoria» quando aggiungo, modifico o elimino qualcosa dal sito';
-    prefRow.appendChild(prefChk); prefRow.appendChild(prefTxt);
-    cont.appendChild(prefRow);
+    // preferenza: avviso "riapri l'app per i promemoria" - 3 scelte (default: sempre)
+    const hintModoCorr = leggiHintModo();
+    const prefWrap = document.createElement('div');
+    prefWrap.style.cssText = 'margin:2px 0 12px; font-size:13px; color:#c9cde8; line-height:1.4;';
+    const prefTit = document.createElement('div');
+    prefTit.style.cssText = 'margin-bottom:6px;';
+    prefTit.textContent = 'Avviso \u00abriapri l\'app per i promemoria\u00bb (quando aggiungo, modifico o elimino qualcosa dal sito):';
+    prefWrap.appendChild(prefTit);
+    [['sempre','Mostralo sempre'],['sessione','Solo una volta per sessione'],['mai','Non mostrarlo pi\u00f9']].forEach(function (opz) {
+      const row = document.createElement('label');
+      row.style.cssText = 'display:flex; align-items:center; gap:9px; margin:3px 0; cursor:pointer;';
+      const r = document.createElement('input');
+      r.type = 'radio'; r.name = 'prom-hint-modo'; r.value = opz[0];
+      r.style.accentColor = '#4f9deb'; r.style.margin = '0';
+      r.checked = (hintModoCorr === opz[0]);
+      r.onchange = () => {
+        if (!r.checked) return;
+        try { localStorage.setItem('promemoria_hint_modo', opz[0]); localStorage.removeItem('promemoria_hint_off'); } catch (e) {}
+        promHintMostrato = false;
+      };
+      const t = document.createElement('span'); t.textContent = opz[1];
+      row.appendChild(r); row.appendChild(t);
+      prefWrap.appendChild(row);
+    });
+    cont.appendChild(prefWrap);
 
     // gruppi
     const hG = document.createElement('div'); hG.className = 'prof-sez'; hG.innerHTML = '<span style="color:#888780;display:inline-flex;">' + svg(IC.users, 16) + '</span> I miei gruppi';
@@ -2712,10 +2721,22 @@
   // solo quando l'app si risincronizza. Ricordiamo di riaprirla. Una volta per
   // sessione; il "Non mostrarlo più" viene ricordato nel browser.
   let promHintMostrato = false;
+  function leggiHintModo() {
+    try {
+      const m = localStorage.getItem('promemoria_hint_modo');
+      if (m === 'mai' || m === 'sessione' || m === 'sempre') return m;
+      if (localStorage.getItem('promemoria_hint_off') === '1') return 'mai';
+    } catch (e) {}
+    return 'sempre';
+  }
   function mostraPromemoriaHint() {
-    try { if (localStorage.getItem('promemoria_hint_off') === '1') return; } catch (e) {}
-    if (promHintMostrato || document.getElementById('prom-hint')) return;
-    promHintMostrato = true;
+    const modo = leggiHintModo();
+    if (modo === 'mai') return;
+    if (document.getElementById('prom-hint')) return;
+    if (modo === 'sessione') {
+      if (promHintMostrato) return;
+      promHintMostrato = true;
+    }
     const bar = document.createElement('div');
     bar.id = 'prom-hint'; bar.className = 'prom-hint';
     bar.innerHTML =
@@ -2726,7 +2747,7 @@
     document.body.appendChild(bar);
     const chiudi = () => { if (bar.parentNode) bar.parentNode.removeChild(bar); };
     bar.querySelector('#prom-hint-x').onclick = chiudi;
-    bar.querySelector('#prom-hint-no').onclick = () => { try { localStorage.setItem('promemoria_hint_off', '1'); } catch (e) {} chiudi(); };
+    bar.querySelector('#prom-hint-no').onclick = () => { try { localStorage.setItem('promemoria_hint_modo', 'mai'); localStorage.removeItem('promemoria_hint_off'); } catch (e) {} chiudi(); };
     setTimeout(() => { bar.classList.add('via'); setTimeout(chiudi, 400); }, 9000);
     requestAnimationFrame(() => bar.classList.add('on'));
   }
