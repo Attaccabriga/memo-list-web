@@ -27,7 +27,7 @@
   .pw-eye { position:absolute; right:8px; top:8px; background:none; border:none; color:var(--muted); cursor:pointer; padding:6px; display:inline-flex; }
   .btn { border:none; border-radius:10px; padding:13px 16px; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:6px; }
   .btn-primary { background:var(--blue); color:#fff; width:100%; }
-  .btn-green { background:var(--greenBtn); color:#fff; }
+  .btn-green { background:var(--accent, var(--greenBtn)); color:#fff; }
   .btn-ghost { background:#242744; color:#cdd2ee; }
   .btn:disabled { opacity:.5; cursor:default; }
   .card { background:var(--card); border-radius:14px; padding:18px; }
@@ -37,14 +37,21 @@
   .between { display:flex; align-items:center; justify-content:space-between; gap:10px; }
   .muted { color:var(--muted); font-size:13px; }
   .ver { color:#4a4f78; font-size:11px; text-align:center; margin-top:10px; }
-  .lista-card { background:var(--card2); border-left:4px solid var(--green); border-radius:12px; padding:14px 16px; margin-bottom:10px; cursor:pointer; display:flex; align-items:center; justify-content:space-between; }
+  .lista-card { background:var(--card2); border-left:4px solid var(--accent, var(--green)); border-radius:12px; padding:14px 16px; margin-bottom:10px; cursor:pointer; display:flex; align-items:center; justify-content:space-between; }
   .lista-card:hover { background:#20244a; }
-  .lista-nome { color:var(--green); font-weight:700; font-size:17px; }
-  /* [P4.2 pilota] Scadenze = arancione come nell'app. Regole circoscritte al solo
-     modulo #mod-scadenze: le altre sezioni restano col tema verde condiviso. */
-  #mod-scadenze .lista-card { border-left-color:#EF9F27; }
-  #mod-scadenze .lista-nome { color:#EF9F27; }
-  #mod-scadenze .btn-green { background:#EF9F27; }
+  .lista-nome { color:var(--accent, var(--green)); font-weight:700; font-size:17px; }
+  /* [P4.2] Colore per sezione: ogni modulo definisce il suo --accent (colori identici
+     all'app). Le classi condivise qui sopra ripiegano sul verde quando --accent non è
+     impostato (login, home, profilo, Spesa), così quelle aree restano invariate. */
+  #mod-dafare       { --accent:#5DCAA5; }
+  #mod-memo         { --accent:#EF9F27; }
+  #mod-appuntamenti { --accent:#378ADD; }
+  #mod-scadenze     { --accent:#EF9F27; }
+  #mod-note         { --accent:#7F77DD; }
+  #mod-ricettario   { --accent:#D4537E; }
+  #mod-archivio     { --accent:#888780; }
+  #mod-calendario   { --accent:#2BB3C0; }
+  #mod-documenti    { --accent:#7986CB; }
   .badge { background:#1a3a1a; color:#4CAF50; border:1px solid #2e6e2e; border-radius:999px; padding:2px 10px; font-size:12px; font-weight:700; display:inline-flex; align-items:center; gap:4px; }
   .reparto-h { color:var(--green); font-size:12px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; margin:16px 0 4px; }
   .item { display:flex; align-items:center; gap:12px; padding:11px 4px; border-bottom:1px solid #20244a; }
@@ -636,7 +643,7 @@
         <div id="dafare-task-empty" class="placeholder hidden">Scegli una categoria</div>
         <div id="dafare-task-body">
         <div class="between" style="margin:6px 0 4px;">
-          <h2 id="dafare-cat-titolo" style="margin:0; font-size:19px; color:var(--green);"></h2>
+          <h2 id="dafare-cat-titolo" style="margin:0; font-size:19px; color:var(--accent, var(--green));"></h2>
         </div>
         <div class="sortbar">
           <span id="dafare-sort-ic" style="color:var(--blue); display:inline-flex;"></span>
@@ -682,7 +689,7 @@
         <div id="memo-item-view" class="memo-col hidden">
           <button id="memo-back-btn" class="back"></button>
           <div class="between" style="margin:2px 0 6px;">
-            <h2 id="memo-cat-titolo" style="margin:0; font-size:17px; color:var(--green);"></h2>
+            <h2 id="memo-cat-titolo" style="margin:0; font-size:17px; color:var(--accent, var(--green));"></h2>
           </div>
           <div class="sortbar">
             <span id="memo-sort-ic" style="color:var(--blue); display:inline-flex;"></span>
@@ -782,7 +789,7 @@
       <div id="scad-sub-view" class="scad-col hidden">
         <button id="scad-back-cat" class="back"></button>
         <div class="between" style="margin:6px 0 8px;">
-          <h2 id="scad-cat-titolo" style="margin:0; font-size:19px; color:#EF9F27;"></h2>
+          <h2 id="scad-cat-titolo" style="margin:0; font-size:19px; color:var(--accent, var(--green));"></h2>
         </div>
         <div id="scad-sub-container"></div>
         <div id="scad-sub-empty" class="placeholder hidden">Scegli una categoria</div>
@@ -793,7 +800,7 @@
         <div id="scad-item-empty" class="placeholder hidden">Scegli una sottocategoria</div>
         <div id="scad-item-body">
         <div class="between" style="margin:6px 0 4px;">
-          <h2 id="scad-sub-titolo" style="margin:0; font-size:19px; color:#EF9F27;"></h2>
+          <h2 id="scad-sub-titolo" style="margin:0; font-size:19px; color:var(--accent, var(--green));"></h2>
         </div>
         <div id="scad-item-container"></div>
         <div id="scad-item-vuoto" class="muted center hidden" style="padding:16px;">Nessuna scadenza. Tocca «＋ Nuova scadenza» per aggiungerne.</div>
@@ -902,7 +909,7 @@
       </div>
       <!-- colonna FORM -->
       <div class="scad-col">
-        <h2 style="margin:0 0 12px; font-size:16px; color:var(--green);">Nuovo appuntamento</h2>
+        <h2 style="margin:0 0 12px; font-size:16px; color:var(--accent, var(--green));">Nuovo appuntamento</h2>
         <div class="memo-form">
         <input id="app-titolo" class="field" placeholder="Nuovo appuntamento…" />
         <div class="field" style="display:flex; align-items:center; gap:8px; padding:0 14px;">
