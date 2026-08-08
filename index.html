@@ -6465,27 +6465,6 @@
     if (minuti <= 60) return { stato: 'breve', minuti: minuti };
     return { stato: 'prossimo' };
   }
-  // Finestra di conferma in tema col sito (al posto del confirm() grigio del browser).
-  function confermaModal(messaggio, opts) {
-    opts = opts || {};
-    return new Promise((resolve) => {
-      const ov = document.createElement('div'); ov.className = 'modal-overlay';
-      const card = document.createElement('div'); card.className = 'modal-card'; card.style.maxWidth = '420px';
-      const msg = document.createElement('div'); msg.style.cssText = 'color:var(--txt); font-size:15px; line-height:1.5; margin-bottom:18px;'; msg.textContent = messaggio;
-      const row = document.createElement('div'); row.style.cssText = 'display:flex; gap:10px; justify-content:flex-end;';
-      const annulla = document.createElement('button'); annulla.className = 'btn btn-ghost'; annulla.style.width = 'auto'; annulla.textContent = opts.annulla || 'Annulla';
-      const conferma = document.createElement('button'); conferma.className = 'btn btn-green'; conferma.style.width = 'auto'; conferma.textContent = opts.conferma || 'Conferma';
-      const chiudi = (val) => { ov.remove(); resolve(val); };
-      annulla.onclick = () => chiudi(false);
-      conferma.onclick = () => chiudi(true);
-      ov.addEventListener('click', (e) => { if (e.target === ov) chiudi(false); });
-      row.appendChild(annulla); row.appendChild(conferma);
-      card.appendChild(msg); card.appendChild(row);
-      ov.appendChild(card); document.body.appendChild(ov);
-      conferma.focus();
-    });
-  }
-
   function resetAppForm() {
     idAppInModifica = null;
     ['app-titolo', 'app-data', 'app-ora', 'app-ora-fine', 'app-luogo', 'app-note'].forEach(id => { $(id).value = ''; });
@@ -6879,7 +6858,7 @@
     const prom = leggiPromemAppForm();
     if (appPromemScelti.includes('custom') && (!prom.datanotifica || !prom.oranotifica)) { homeToast('Imposta data e ora del promemoria «a scelta»'); return; }
     if (terminaGiornoDopoWeb(ora, ora_fine)) {
-      const okPiu1 = await confermaModal("L'ora di fine è precedente all'ora di inizio. L'appuntamento terminerà il giorno successivo (+1). Confermi?", { conferma: 'Conferma', annulla: 'Annulla' });
+      const okPiu1 = await confermaPopup("L'ora di fine è precedente all'ora di inizio. L'appuntamento terminerà il giorno successivo (+1). Confermi?", { titolo: 'Ora di fine', ok: 'Conferma', annulla: 'Annulla' });
       if (!okPiu1) return;
     }
     if (idAppInModifica) {
