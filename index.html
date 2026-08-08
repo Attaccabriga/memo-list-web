@@ -121,7 +121,7 @@
   @media (min-width:1000px){ #app-grid { grid-template-columns:minmax(320px,1fr) 360px; } }
   /* [2 COLONNE NOTE] lista a sinistra, form a destra */
   #note-grid { display:grid; grid-template-columns:1fr; gap:14px; align-items:start; }
-  @media (min-width:1000px){ #note-grid { grid-template-columns:minmax(320px,1fr) 380px; } }
+  @media (min-width:1000px){ #note-grid { grid-template-columns:minmax(320px,720px) 380px; } }
   .placeholder { background:var(--card); border:1px dashed #2f3560; border-radius:14px; padding:22px 18px; color:var(--muted); text-align:center; margin-top:8px; }
   .placeholder .big { color:#aeb4dd; font-weight:700; font-size:16px; margin-bottom:6px; display:flex; align-items:center; justify-content:center; gap:8px; }
   .cat-right { display:inline-flex; align-items:center; gap:9px; }
@@ -240,6 +240,7 @@
   .nota-testo { color:#c9cde8; font-size:14px; line-height:1.4; white-space:pre-wrap; word-break:break-word; }
   .nota-meta-row { display:flex; flex-wrap:wrap; gap:12px; margin-top:8px; }
   .nota-meta { display:inline-flex; align-items:center; gap:5px; color:var(--muted); font-size:12px; }
+  .note-gruppo-tit { color:var(--muted); font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.4px; margin:16px 2px 8px; }
   .nota-thumbs { display:flex; gap:6px; margin-top:10px; flex-wrap:wrap; }
   .nota-thumb { width:56px; height:56px; border-radius:8px; object-fit:cover; }
   .nota-azioni { display:flex; align-items:center; gap:2px; flex:none; }
@@ -2000,7 +2001,7 @@
   async function caricaNote() {
     const cont = $('note-container'); cont.innerHTML = '<p class="muted">Caricamento…</p>';
     const { data, error } = await sb.from('note')
-      .select('id, client_id, titolo, testo, colore, immagini, promemoria_data, promemoria_ora, condiviso, user_id')
+      .select('id, client_id, titolo, testo, colore, immagini, promemoria_data, promemoria_ora, condiviso, user_id, created_at')
       .order('created_at', { ascending: false });
     if (error) { cont.innerHTML = '<p class="err">Errore: ' + error.message + '</p>'; return; }
     noteCaricate = data || [];
@@ -2030,7 +2031,25 @@
     else if (noteOrdine === 'colore') arr.sort((a, b) => (a.colore || '').localeCompare(b.colore || ''));
     else if (noteOrdine === 'data_inserimento') arr.reverse();
     $('note-vuoto').classList.toggle('hidden', arr.length > 0);
-    arr.forEach(n => cont.appendChild(freshNoteCard(n)));
+    if (noteOrdine === 'recenti') {
+      const _now = Date.now(), _g7 = 7*86400000, _g30 = 30*86400000;
+      const _gruppi = [['Ultimi 7 giorni', []], ['Ultimo mese', []], ['Più vecchie', []]];
+      arr.forEach(n => {
+        const _t = n.created_at ? new Date(n.created_at).getTime() : 0;
+        const _eta = _now - _t;
+        if (_t && _eta <= _g7) _gruppi[0][1].push(n);
+        else if (_t && _eta <= _g30) _gruppi[1][1].push(n);
+        else _gruppi[2][1].push(n);
+      });
+      _gruppi.forEach(g => {
+        if (!g[1].length) return;
+        const _h = document.createElement('div'); _h.className = 'note-gruppo-tit'; _h.textContent = g[0];
+        cont.appendChild(_h);
+        g[1].forEach(n => cont.appendChild(freshNoteCard(n)));
+      });
+    } else {
+      arr.forEach(n => cont.appendChild(freshNoteCard(n)));
+    }
   }
 
   // Badge stato condivisione (Privato/Condiviso), come nell'app.
@@ -2049,6 +2068,7 @@
     const imgs = Array.isArray(n.immagini) ? n.immagini : [];
     let meta = badgeCondiviso(n);
     if (n.promemoria_data) meta += '<span class="nota-meta"><span style="color:#EF9F27;display:inline-flex;">' + svg(IC.bell, 14) + '</span> ' + escapeHtml(n.promemoria_data) + (n.promemoria_ora ? (' ' + escapeHtml(n.promemoria_ora)) : '') + '</span>';
+    if (n.created_at) { const _d = new Date(n.created_at); if (!isNaN(_d.getTime())) meta += '<span class="nota-meta">' + String(_d.getDate()).padStart(2,'0') + '/' + String(_d.getMonth()+1).padStart(2,'0') + '/' + _d.getFullYear() + '</span>'; }
     const _algN = (n.client_id && noteAllegatiPerClient[n.client_id]) || [];
     if (_algN.length) meta += '<span class="nota-meta" style="color:#4f9deb;">' + svg(IC.fileText, 13) + ' ' + _algN.length + ' ' + (_algN.length === 1 ? 'allegato' : 'allegati') + '</span>';
     const body = document.createElement('div'); body.className = 'nota-body';
