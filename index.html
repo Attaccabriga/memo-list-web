@@ -1360,6 +1360,38 @@
     t.textContent = msg; t.className = 'show'; clearTimeout(t._h); t._h = setTimeout(() => { t.className = ''; }, 1800);
   }
 
+  // Popup di conferma in stile app (sostituisce il confirm() nativo del browser).
+  // Ritorna una Promise: true = confermato, false = annullato.
+  // opts: { titolo, ok, annulla, pericolo (bottone OK rosso) }.
+  function confermaPopup(messaggio, opts) {
+    opts = opts || {};
+    return new Promise((resolve) => {
+      const ov = document.createElement('div'); ov.className = 'modal-overlay';
+      const card = document.createElement('div'); card.className = 'modal-card'; card.style.maxWidth = '420px';
+      const h = document.createElement('div'); h.className = 'modal-head';
+      h.innerHTML = '<h3>' + escapeHtml(opts.titolo || 'Conferma') + '</h3>';
+      card.appendChild(h);
+      const p = document.createElement('p');
+      p.style.cssText = 'margin:2px 0 18px; color:var(--txt); white-space:pre-line; line-height:1.45;';
+      p.textContent = messaggio;
+      card.appendChild(p);
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex; gap:10px; justify-content:flex-end;';
+      const bAnnulla = document.createElement('button'); bAnnulla.className = 'btn btn-ghost'; bAnnulla.style.width = 'auto';
+      bAnnulla.textContent = opts.annulla || 'Annulla';
+      const bOk = document.createElement('button'); bOk.className = 'btn'; bOk.style.width = 'auto'; bOk.style.color = '#fff';
+      bOk.style.background = opts.pericolo ? 'var(--danger)' : 'var(--greenBtn)';
+      bOk.textContent = opts.ok || 'OK';
+      row.appendChild(bAnnulla); row.appendChild(bOk);
+      card.appendChild(row);
+      ov.appendChild(card); document.body.appendChild(ov);
+      const chiudi = (val) => { ov.remove(); resolve(val); };
+      bAnnulla.onclick = () => chiudi(false);
+      bOk.onclick = () => chiudi(true);
+      ov.onclick = (e) => { if (e.target === ov) chiudi(false); };   // click fuori = annulla
+    });
+  }
+
   async function caricaHome() {
     const cont = $('home-container');
     // Utente: nickname + avatar (come l'app). Già in memoria (currentUser): niente rete.
@@ -5476,7 +5508,7 @@
     if (!userId) return false;
     const { error } = await sb.from('categorie_scadenze_custom')
       .upsert({ user_id: userId, dati: blob, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
-    if (error) { alert('Errore salvataggio categoria: ' + error.message); return false; }
+    if (error) { homeToast('Errore nel salvataggio: ' + error.message); return false; }
     return true;
   }
   // Parte dal blob attuale (o da uno vuoto) e ne restituisce una COPIA normalizzata,
@@ -5492,7 +5524,7 @@
     if (!nome) return;
     // niente collisioni con le categorie esistenti (fisse per id o nome, o custom)
     if (scadTree.some(c => norm(c.id) === norm(nome) || norm(c.nome) === norm(nome))) {
-      alert('Esiste già una categoria con questo nome.'); return;
+      homeToast('Esiste già una categoria con questo nome.'); return;
     }
     // Prima scegli l'icona (stesso selettore dell'app: emoji o icona Tabler), poi crea.
     apriSelettoreIcona(async (icona) => {
@@ -5512,7 +5544,7 @@
     const nome = $('scad-nuova-sub').value.trim();
     if (!nome) return;
     if ((scadCat.sub || []).some(s => norm(s.id) === norm(nome) || norm(s.nome) === norm(nome))) {
-      alert('Esiste già una sottocategoria con questo nome in questa categoria.'); return;
+      homeToast('Esiste già una sottocategoria con questo nome in questa categoria.'); return;
     }
     apriSelettoreIcona(async (icona) => {
       const blob = scadBlobCorrente();
@@ -5522,7 +5554,7 @@
         blob.subcatCustomPerFissa[scadCat.id].push({ nome: nome, icona: icona });
       } else {
         const cc = (blob.categorieCustom || []).find(c => c && c.nome === scadCat.id);
-        if (!cc) { alert('Categoria non trovata nel salvataggio. Riprova.'); return; }
+        if (!cc) { homeToast('Categoria non trovata nel salvataggio. Riprova.'); return; }
         if (!Array.isArray(cc.sottocategorie)) cc.sottocategorie = [];
         cc.sottocategorie.push({ nome: nome, icona: icona });
       }
@@ -5553,12 +5585,12 @@
   async function eliminaScadCategoria(cat) {
     if (!cat || !cat.custom) return;   // solo categorie custom (le fisse non si toccano)
     const n = await contaScadDi(cat.id, null);
-    if (n === null) { alert('Errore nel conteggio delle scadenze. Riprova.'); return; }
+    if (n === null) { homeToast('Errore nel conteggio delle scadenze. Riprova.'); return; }
     const msg = n > 0
       ? 'Eliminare la categoria «' + cat.nome + '» e le sue sottocategorie?\n\nContiene ' + n + (n === 1 ? ' scadenza che verrà eliminata' : ' scadenze che verranno eliminate') + ' DEFINITIVAMENTE. L\'operazione non è reversibile.'
       : 'Eliminare la categoria «' + cat.nome + '»?';
-    if (!confirm(msg)) return;
-    if (n > 0 && !(await eliminaScadenzeDi(cat.id, null))) { alert('Errore durante l\'eliminazione delle scadenze.'); return; }
+    if (!(await confermaPopup(msg, { titolo: 'Elimina categoria', ok: 'Elimina', pericolo: true }))) return;
+    if (n > 0 && !(await eliminaScadenzeDi(cat.id, null))) { homeToast('Errore durante l\'eliminazione delle scadenze.'); return; }
     const blob = scadBlobCorrente();
     blob.categorieCustom = (blob.categorieCustom || []).filter(c => c && c.nome !== cat.id);
     if (!(await salvaScadCustomBlob(blob))) return;
@@ -5570,12 +5602,12 @@
   async function eliminaScadSottocategoria(cat, sub) {
     if (!cat || !sub || !sub.custom) return;   // solo sottocategorie custom
     const n = await contaScadDi(cat.id, sub.id);
-    if (n === null) { alert('Errore nel conteggio delle scadenze. Riprova.'); return; }
+    if (n === null) { homeToast('Errore nel conteggio delle scadenze. Riprova.'); return; }
     const msg = n > 0
       ? 'Eliminare la sottocategoria «' + sub.nome + '»?\n\nContiene ' + n + (n === 1 ? ' scadenza che verrà eliminata' : ' scadenze che verranno eliminate') + ' DEFINITIVAMENTE. L\'operazione non è reversibile.'
       : 'Eliminare la sottocategoria «' + sub.nome + '»?';
-    if (!confirm(msg)) return;
-    if (n > 0 && !(await eliminaScadenzeDi(cat.id, sub.id))) { alert('Errore durante l\'eliminazione delle scadenze.'); return; }
+    if (!(await confermaPopup(msg, { titolo: 'Elimina sottocategoria', ok: 'Elimina', pericolo: true }))) return;
+    if (n > 0 && !(await eliminaScadenzeDi(cat.id, sub.id))) { homeToast('Errore durante l\'eliminazione delle scadenze.'); return; }
     const blob = scadBlobCorrente();
     const isFissa = SCAD_TREE.some(c => c.id === cat.id);
     const uguale = (s) => (typeof s === 'string' ? s : (s && s.nome)) === sub.id;
