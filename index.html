@@ -3986,7 +3986,7 @@
       const nuovo = input.value.trim();
       if (!nuovo || nuovo === l.nome) { chiudi(); return; }
       const { error } = await sb.from('liste_spesa').update({ nome: nuovo }).eq('id', l.id);
-      if (error) { alert('Errore rinomina: ' + error.message); return; }
+      if (error) { homeToast('Errore rinomina: ' + error.message); return; }
       l.nome = nuovo; chiudi();
     };
     salva.onclick = doSave; annulla.onclick = chiudi;
@@ -4002,10 +4002,10 @@
     if (!(await confermaPopup(msg, { titolo: 'Elimina lista', ok: 'Conferma', pericolo: true }))) return;
     if (owner) {
       const { error } = await sb.from('liste_spesa').delete().eq('id', l.id);
-      if (error) { alert('Errore eliminazione: ' + error.message); return; }
+      if (error) { homeToast('Errore eliminazione: ' + error.message); return; }
     } else {
       const { error } = await sb.from('condivisioni').delete().eq('tabella', 'liste_spesa').eq('elemento_id', String(l.id)).eq('user_id', userId);
-      if (error) { alert('Errore: ' + error.message); return; }
+      if (error) { homeToast('Errore: ' + error.message); return; }
     }
     await caricaListe();
   }
@@ -4014,7 +4014,7 @@
     const nome = $('nuova-lista').value.trim();
     if (!nome) return;
     const { error } = await sb.from('liste_spesa').insert([{ client_id: uuid(), nome, user_id: userId, condiviso: false }]);
-    if (error) { alert('Errore creazione lista: ' + error.message); return; }
+    if (error) { homeToast('Errore creazione lista: ' + error.message); return; }
     $('nuova-lista').value = '';
     await caricaListe();
     suggerisciNomeLista();
@@ -4059,7 +4059,7 @@
     a.quantita = v; a.unita = u;
     if (numEl) numEl.textContent = fmtQta(v);
     const { error } = await sb.from('articoli_spesa').update({ quantita: v, unita: u }).eq('id', a.id);
-    if (error) { alert('Errore quantità: ' + error.message); await caricaArticoli(); }
+    if (error) { homeToast('Errore quantità: ' + error.message); await caricaArticoli(); }
     else notificaCambioSpesa();
   }
 
@@ -4158,7 +4158,7 @@
     if (!nomi.length) return;
     const rows = nomi.map(nome => ({ client_id: uuid(), nome, spuntato: false, quantita: 1, unita: unitaDiDefault(nome), lista_id: listaCorrente.id }));
     const { error } = await sb.from('articoli_spesa').insert(rows);
-    if (error) { alert('Errore aggiunta articolo: ' + error.message); return; }
+    if (error) { homeToast('Errore aggiunta articolo: ' + error.message); return; }
     await caricaArticoli();
     notificaCambioSpesa();
   }
@@ -4206,7 +4206,7 @@
           if (e.results[i].isFinal) micBuffer += (micBuffer ? ' ' : '') + e.results[i][0].transcript;
         }
       };
-      recognition.onerror = (e) => { micAttivo = false; aggiornaMicUI(); if (e.error !== 'no-speech' && e.error !== 'aborted') alert('Dettatura non riuscita: ' + e.error); };
+      recognition.onerror = (e) => { micAttivo = false; aggiornaMicUI(); if (e.error !== 'no-speech' && e.error !== 'aborted') homeToast('Dettatura non riuscita: ' + e.error); };
       recognition.onend = async () => {
         micAttivo = false; aggiornaMicUI();
         const testo = micBuffer.trim(); micBuffer = '';
@@ -4231,14 +4231,14 @@
 
   async function toggleArticolo(id, spuntato) {
     const { error } = await sb.from('articoli_spesa').update({ spuntato }).eq('id', id);
-    if (error) { alert('Errore: ' + error.message); }
+    if (error) { homeToast('Errore: ' + error.message); }
     await caricaArticoli();
     if (!error) notificaCambioSpesa();
   }
 
   async function eliminaArticolo(id) {
     const { error } = await sb.from('articoli_spesa').delete().eq('id', id);
-    if (error) { alert('Errore eliminazione: ' + error.message); return; }
+    if (error) { homeToast('Errore eliminazione: ' + error.message); return; }
     await caricaArticoli();
     notificaCambioSpesa();
   }
@@ -4250,7 +4250,7 @@
     if (!n) return;
     if (!(await confermaPopup('Rimuovere ' + n + (n === 1 ? ' articolo spuntato?' : ' articoli spuntati?'), { titolo: 'Rimuovi spuntati', ok: 'Rimuovi', pericolo: true }))) return;
     const { error } = await sb.from('articoli_spesa').delete().eq('lista_id', listaCorrente.id).eq('spuntato', true);
-    if (error) { alert('Errore rimozione: ' + error.message); return; }
+    if (error) { homeToast('Errore rimozione: ' + error.message); return; }
     await caricaArticoli();
     notificaCambioSpesa();
   }
@@ -4448,12 +4448,12 @@
     const nome = $('dafare-nuova-cat').value.trim();
     if (!nome) return;
     if (categorieCaricate.some(c => norm(c.nome) === norm(nome))) {
-      alert('Esiste già una categoria con questo nome.'); return;
+      homeToast('Esiste già una categoria con questo nome.'); return;
     }
     // Prima scegli l'icona, poi crea (come nell'app).
     apriSelettoreIcona(async (icona) => {
       const { error } = await sb.from('categorie_todo').insert([{ nome, icona, tipo: 'generale', user_id: userId }]);
-      if (error) { alert('Errore creazione categoria: ' + error.message); return; }
+      if (error) { homeToast('Errore creazione categoria: ' + error.message); return; }
       $('dafare-nuova-cat').value = '';
       await caricaCategorie();
     });
@@ -4461,14 +4461,14 @@
 
   async function cambiaIconaCategoria(nome, icona) {
     const { error } = await sb.from('categorie_todo').update({ icona }).eq('nome', nome).eq('user_id', userId);
-    if (error) { alert('Errore cambio icona: ' + error.message); return; }
+    if (error) { homeToast('Errore cambio icona: ' + error.message); return; }
     await caricaCategorie();
   }
 
   async function eliminaCategoria(nome) {
     if (!(await confermaPopup('Eliminare la categoria "' + nome + '"?\n(I task già presenti non vengono cancellati.)', { titolo: 'Elimina categoria', ok: 'Elimina', pericolo: true }))) return;
     const { error } = await sb.from('categorie_todo').delete().eq('nome', nome).eq('user_id', userId);
-    if (error) { alert('Errore eliminazione categoria: ' + error.message); return; }
+    if (error) { homeToast('Errore eliminazione categoria: ' + error.message); return; }
     await caricaCategorie();
   }
 
@@ -4540,7 +4540,7 @@
       const nuovo = input.value.trim();
       if (!nuovo || nuovo === t.testo) { div.replaceWith(rigaTask(t)); return; }
       const { error } = await sb.from('todos').update({ testo: nuovo }).eq('id', t.id);
-      if (error) { alert('Errore modifica: ' + error.message); return; }
+      if (error) { homeToast('Errore modifica: ' + error.message); return; }
       await caricaTask();
     };
     salva.onclick = doSave;
@@ -4606,7 +4606,7 @@
       client_id: uuid(), testo, categoria: catCorrente.nome,
       completato: false, completato_il: null, ordine: maxOrdine + 1, user_id: userId
     }]);
-    if (error) { alert('Errore aggiunta attività: ' + error.message); return; }
+    if (error) { homeToast('Errore aggiunta attività: ' + error.message); return; }
     $('dafare-nuovo-task').value = '';
     $('dafare-nuovo-task').focus();
     await caricaTask();
@@ -4618,7 +4618,7 @@
     const loc = taskCaricati.find(x => x.id === id);
     if (loc) { loc.completato = completato; loc.completato_il = completato_il; renderTaskList(); }
     const { error } = await sb.from('todos').update({ completato, completato_il }).eq('id', id);
-    if (error) { alert('Errore: ' + error.message); await caricaTask(); }
+    if (error) { homeToast('Errore: ' + error.message); await caricaTask(); }
   }
 
   async function eliminaTask(id) {
@@ -4626,7 +4626,7 @@
     taskCaricati = taskCaricati.filter(x => x.id !== id);
     renderTaskList();
     const { error } = await sb.from('todos').delete().eq('id', id);
-    if (error) { alert('Errore eliminazione: ' + error.message); await caricaTask(); }
+    if (error) { homeToast('Errore eliminazione: ' + error.message); await caricaTask(); }
   }
 
   // [SPOSTA DA FARE] finestra al volo: scegli la categoria di destinazione.
@@ -4749,12 +4749,12 @@
   function creaMemoCategoria() {
     const nome = $('memo-nuova-cat').value.trim();
     if (!nome) return;
-    if (memoCategorieCaricate.some(c => norm(c.nome) === norm(nome))) { alert('Esiste già una categoria con questo nome.'); return; }
+    if (memoCategorieCaricate.some(c => norm(c.nome) === norm(nome))) { homeToast('Esiste già una categoria con questo nome.'); return; }
     apriSelettoreIcona(async (icona) => {
       const arr = await leggiBlobMemo();
       arr.push({ nome, icona });
       const err = await salvaBlobMemo(arr);
-      if (err) { alert('Errore creazione categoria: ' + err.message); return; }
+      if (err) { homeToast('Errore creazione categoria: ' + err.message); return; }
       $('memo-nuova-cat').value = '';
       await caricaMemoCategorie();
     });
@@ -4764,14 +4764,14 @@
     const c = arr.find(x => x && norm(x.nome) === norm(nome));
     if (c) c.icona = icona; else arr.push({ nome, icona });
     const err = await salvaBlobMemo(arr);
-    if (err) { alert('Errore cambio icona: ' + err.message); return; }
+    if (err) { homeToast('Errore cambio icona: ' + err.message); return; }
     await caricaMemoCategorie();
   }
   async function eliminaMemoCategoria(nome) {
     if (!(await confermaPopup('Eliminare la categoria "' + nome + '"?\n(I memo già presenti non vengono cancellati.)', { titolo: 'Elimina categoria', ok: 'Elimina', pericolo: true }))) return;
     const arr = (await leggiBlobMemo()).filter(x => x && norm(x.nome) !== norm(nome));
     const err = await salvaBlobMemo(arr);
-    if (err) { alert('Errore eliminazione categoria: ' + err.message); return; }
+    if (err) { homeToast('Errore eliminazione categoria: ' + err.message); return; }
     await caricaMemoCategorie();
   }
 
@@ -5201,14 +5201,14 @@
     if (!rip) return;   // errore di validazione già segnalato
     if (idMemoInModifica) {
       const { error } = await sb.from('todos_scadenza').update({ testo, data, ora, nota, ...rip }).eq('id', idMemoInModifica);
-      if (error) { alert('Errore modifica memo: ' + error.message); return; }
+      if (error) { homeToast('Errore modifica memo: ' + error.message); return; }
     } else {
       const { error } = await sb.from('todos_scadenza').insert([{
         client_id: uuid(), testo, categoria: memoCatCorrente.nome,
         data, ora, nota, completato: false, completato_il: null,
         ...rip, occorrenza_numero: 1, genitore_client_id: null, user_id: userId
       }]);
-      if (error) { alert('Errore aggiunta memo: ' + error.message); return; }
+      if (error) { homeToast('Errore aggiunta memo: ' + error.message); return; }
     }
     resetMemoForm();
     await caricaMemoItems();
@@ -5302,7 +5302,7 @@
     // [VELOCITÀ] ottimistico: aggiorna subito stato locale + schermata, poi sincronizza
     if (m) { m.completato = completato; m.completato_il = completato_il; renderMemoLista(); }
     const { error } = await sb.from('todos_scadenza').update({ completato, completato_il }).eq('id', id);
-    if (error) { alert('Errore: ' + error.message); await caricaMemoItems(); return; }
+    if (error) { homeToast('Errore: ' + error.message); await caricaMemoItems(); return; }
     const ricorrente = !!(m && m.ripetizione && m.ripetizione !== 'nessuna' && m.client_id);
     try {
       if (ricorrente) {
@@ -5339,7 +5339,7 @@
     if (memoSelezionato && memoSelezionato.id === id) { memoSelezionato = null; memoRigaSel = null; }
     renderMemoLista();
     const { error } = await sb.from('todos_scadenza').delete().eq('id', id);
-    if (error) { alert('Errore eliminazione: ' + error.message); await caricaMemoItems(); }
+    if (error) { homeToast('Errore eliminazione: ' + error.message); await caricaMemoItems(); }
     else mostraPromemoriaHint();
     caricaMemoCategorie();   // [FIX CONTEGGI] aggiorna i numeri dopo l'eliminazione
   }
@@ -5825,7 +5825,7 @@
     loc.sottoattivita = nuove;
     renderScadLista();
     const { error } = await sb.from('scadenze').update({ sottoattivita: nuove }).eq('id', s.id);
-    if (error) { alert('Errore: ' + error.message); await caricaScadItems(); }
+    if (error) { homeToast('Errore: ' + error.message); await caricaScadItems(); }
   }
 
   // [SPOSTA SCAD] finestra al volo: scegli categoria + sottocategoria di destinazione.
@@ -5871,7 +5871,7 @@
       occorrenza_numero: 1, genitore_client_id: null,
       regola_weekend: s.regola_weekend || null, giorno_ancora: s.giorno_ancora ?? null, user_id: userId
     }]);
-    if (error) { alert('Errore duplicazione: ' + error.message); return; }
+    if (error) { homeToast('Errore duplicazione: ' + error.message); return; }
     homeToast('Scadenza duplicata');
     await caricaScadItems();
   }
@@ -6062,7 +6062,7 @@
     if (idScadInModifica) {
       if (!titolo) { homeToast('Scrivi il titolo'); return; }
       const { error } = await sb.from('scadenze').update({ titolo, data, ora, nota, sottoattivita: scadSottoattivita, anticipo: prom.anticipo, datanotifica: prom.datanotifica, oranotifica: prom.oranotifica, ...rip }).eq('id', idScadInModifica);
-      if (error) { alert('Errore modifica scadenza: ' + error.message); return; }
+      if (error) { homeToast('Errore modifica scadenza: ' + error.message); return; }
       resetScadForm(); chiudiScadModal(); await caricaScadItems();
     } else {
       const catId = $('scad-dest-cat').value, subId = $('scad-dest-sub').value;
@@ -6073,7 +6073,7 @@
         categoria: catId, sottocategoria: subId,
         genitore_client_id: null, occorrenza_numero: 1, user_id: userId, ...rip
       }]);
-      if (error) { alert('Errore aggiunta scadenza: ' + error.message); return; }
+      if (error) { homeToast('Errore aggiunta scadenza: ' + error.message); return; }
       resetScadForm(); chiudiScadModal();
       await vaiADestinazioneScad(catId, subId);   // mostra la destinazione con la nuova scadenza
     }
@@ -6148,7 +6148,7 @@
     const loc = scadItemsCaricati.find(x => x.id === id);
     if (loc) { loc.completata = completata; loc.completata_il = completata_il; renderScadLista(); }
     const { error } = await sb.from('scadenze').update({ completata, completata_il }).eq('id', id);
-    if (error) { alert('Errore: ' + error.message); await caricaScadItems(); return; }
+    if (error) { homeToast('Errore: ' + error.message); await caricaScadItems(); return; }
     const ricorrente = !!(s && s.ripetizione && s.ripetizione !== 'nessuna' && s.client_id);
     try {
       if (ricorrente && completata) {
@@ -6180,7 +6180,7 @@
     scadItemsCaricati = scadItemsCaricati.filter(x => x.id !== id);
     renderScadLista();
     const { error } = await sb.from('scadenze').delete().eq('id', id);
-    if (error) { alert('Errore eliminazione: ' + error.message); await caricaScadItems(); }
+    if (error) { homeToast('Errore eliminazione: ' + error.message); await caricaScadItems(); }
     else mostraPromemoriaHint();
   }
 
@@ -6885,7 +6885,7 @@
     if (idAppInModifica) {
       // In modifica aggiorno solo i campi base della singola occorrenza (la ricorrenza non si tocca qui).
       const { error } = await sb.from('appuntamenti').update({ titolo, data, ora, ora_fine, luogo, note, anticipo: prom.anticipo, datanotifica: prom.datanotifica, oranotifica: prom.oranotifica }).eq('id', idAppInModifica);
-      if (error) { alert('Errore modifica appuntamento: ' + error.message); return; }
+      if (error) { homeToast('Errore modifica appuntamento: ' + error.message); return; }
       await flushPendingAllegati(appEditClientId);
     } else {
       const rip = leggiRipetizioneDalAppForm();
@@ -6898,7 +6898,7 @@
           ripetizione: 'nessuna', giornomese: null, fine_tipo: 'nessuna', fine_data: null, fine_conteggio: null,
           serie_client_id: null, user_id: userId
         }]);
-        if (error) { alert('Errore aggiunta appuntamento: ' + error.message); return; }
+        if (error) { homeToast('Errore aggiunta appuntamento: ' + error.message); return; }
         await flushPendingAllegati(cidNuovo);
       } else {
         // Ricorrente: come l'app, genero in anticipo tutta la serie di date.
@@ -6913,7 +6913,7 @@
           serie_client_id: serieId, user_id: userId
         }));
         const { error } = await sb.from('appuntamenti').insert(righe);
-        if (error) { alert('Errore creazione serie: ' + error.message); return; }
+        if (error) { homeToast('Errore creazione serie: ' + error.message); return; }
         homeToast('Serie di ' + righe.length + ' appuntamenti creata');
         await flushPendingAllegati(righe[0] && righe[0].client_id);
       }
@@ -6952,7 +6952,7 @@
     appItemsCaricati = appItemsCaricati.filter(x => x.id !== a.id);
     renderAppLista();
     const { error } = await sb.from('appuntamenti').delete().eq('id', a.id);
-    if (error) { alert('Errore eliminazione: ' + error.message); await caricaAppuntamenti(); }
+    if (error) { homeToast('Errore eliminazione: ' + error.message); await caricaAppuntamenti(); }
     else mostraPromemoriaHint();
   }
 
@@ -6973,14 +6973,14 @@
       appItemsCaricati = appItemsCaricati.filter(x => x.id !== a.id);
       renderAppLista();
       const { error } = await sb.from('appuntamenti').delete().eq('id', a.id);
-      if (error) { alert('Errore eliminazione: ' + error.message); await caricaAppuntamenti(); }
+      if (error) { homeToast('Errore eliminazione: ' + error.message); await caricaAppuntamenti(); }
     };
     bSerie.onclick = async () => {
       chiudi();
       appItemsCaricati = appItemsCaricati.filter(x => x.serie_client_id !== a.serie_client_id);
       renderAppLista();
       const { error } = await sb.from('appuntamenti').delete().eq('serie_client_id', a.serie_client_id);
-      if (error) { alert('Errore eliminazione serie: ' + error.message); await caricaAppuntamenti(); }
+      if (error) { homeToast('Errore eliminazione serie: ' + error.message); await caricaAppuntamenti(); }
     };
     bAnnulla.onclick = chiudi;
     card.appendChild(bQuesto); card.appendChild(bSerie); card.appendChild(bAnnulla);
@@ -7082,7 +7082,7 @@
       const nuovoCondiviso = selezionati.size > 0;
       await sb.from(tabella).update({ condiviso: nuovoCondiviso }).eq('id', item.id);
     } catch (e) {
-      alert('Errore condivisione: ' + (e.message || e));
+      homeToast('Errore condivisione: ' + (e.message || e));
     } finally {
       btn.disabled = false; btn.textContent = 'Salva';
     }
