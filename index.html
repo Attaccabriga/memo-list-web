@@ -5446,8 +5446,11 @@
     } catch (e) { /* rete giu': mantieni l'albero attuale */ }
   }
 
-  // Card riusabile (icona + nome a sinistra, conteggio a destra).
-  function scadCard(icona, nome, tot, td, onClick) {
+  // Card riusabile (icona + nome a sinistra, conteggi a destra).
+  // Allineata all'app: testo = quante "da fare" (non completate); pallino verde
+  // (.badge) = in corso (non ancora scadute); pallino rosso (.count-pill) = scadute.
+  // da fare = in corso + scadute.
+  function scadCard(icona, nome, daFare, inCorso, scadute, onClick) {
     const div = document.createElement('div'); div.className = 'lista-card';
     const n = document.createElement('span'); n.className = 'lista-nome';
     n.style.display = 'inline-flex'; n.style.alignItems = 'center'; n.style.gap = '9px';
@@ -5455,9 +5458,10 @@
     div.appendChild(n);
     const right = document.createElement('span'); right.className = 'cat-right';
     const t = document.createElement('span'); t.className = 'muted';
-    t.textContent = tot + (tot === 1 ? ' scadenza' : ' scadenze');
+    t.textContent = daFare + ' da fare';
     right.appendChild(t);
-    if (td > 0) { const pill = document.createElement('span'); pill.className = 'count-pill'; pill.textContent = td; right.appendChild(pill); }
+    if (inCorso > 0) { const pill = document.createElement('span'); pill.className = 'badge'; pill.textContent = inCorso; right.appendChild(pill); }
+    if (scadute > 0) { const pill = document.createElement('span'); pill.className = 'count-pill'; pill.textContent = scadute; right.appendChild(pill); }
     div.appendChild(right);
     div.onclick = onClick;
     return div;
@@ -5496,26 +5500,37 @@
     aggiornaVisibilitaColonneScad();
   }
 
-  // Conteggi per categoria e per categoria+sottocategoria.
+  // Conteggi per categoria e per categoria+sottocategoria, allineati all'app:
+  // per ogni chiave contiamo le "da fare" (non completate) e le dividiamo in
+  // "in corso" (non ancora scadute) e "scadute" (data passata, via memoScaduta).
+  // da fare = in corso + scadute. .range(0, 99999) evita il taglio a 1000 righe
+  // del default di Supabase.
   async function scadConteggi() {
-    const totCat = {}, tdCat = {}, totSub = {}, tdSub = {};
-    const { data } = await sb.from('scadenze').select('categoria, sottocategoria, completata');
+    const cat = {}, sub = {};
+    const acc = (obj, key, s) => {
+      const o = obj[key] || (obj[key] = { daFare: 0, inCorso: 0, scadute: 0 });
+      if (!s.completata) {
+        o.daFare++;
+        if (memoScaduta(s.data, s.ora)) o.scadute++; else o.inCorso++;
+      }
+    };
+    const { data } = await sb.from('scadenze').select('categoria, sottocategoria, completata, data, ora').range(0, 99999);
     (data || []).forEach(s => {
       const c = s.categoria || '';
-      totCat[c] = (totCat[c] || 0) + 1; if (!s.completata) tdCat[c] = (tdCat[c] || 0) + 1;
-      const k = c + '||' + (s.sottocategoria || '');
-      totSub[k] = (totSub[k] || 0) + 1; if (!s.completata) tdSub[k] = (tdSub[k] || 0) + 1;
+      acc(cat, c, s);
+      acc(sub, c + '||' + (s.sottocategoria || ''), s);
     });
-    return { totCat, tdCat, totSub, tdSub };
+    return { cat, sub };
   }
 
   async function caricaScadCategorie() {
     const cont = $('scad-cat-container'); cont.innerHTML = '<p class="muted">Caricamento…</p>';
     await caricaScadCustom();   // [CATEGORIE SCAD CUSTOM] aggiorna scadTree con le personalizzazioni
-    const { totCat, tdCat } = await scadConteggi();
+    const { cat: contCat } = await scadConteggi();
     cont.innerHTML = '';
     scadTree.forEach(cat => {
-      cont.appendChild(scadCard(cat.icona, cat.nome, totCat[cat.id] || 0, tdCat[cat.id] || 0, () => apriScadCategoria(cat)));
+      const c = contCat[cat.id] || { daFare: 0, inCorso: 0, scadute: 0 };
+      cont.appendChild(scadCard(cat.icona, cat.nome, c.daFare, c.inCorso, c.scadute, () => apriScadCategoria(cat)));
     });
     // [CALENDARIO] se stiamo aprendo una scadenza precisa dal calendario, entra nella sua categoria+sottocategoria
     if (calApriTarget && calApriTarget.modulo === 'scadenze') calApriScadenzaSePendente();
@@ -5542,11 +5557,12 @@
 
   async function caricaScadSottocategorie(cat) {
     const cont = $('scad-sub-container'); cont.innerHTML = '<p class="muted">Caricamento…</p>';
-    const { totSub, tdSub } = await scadConteggi();
+    const { sub: contSub } = await scadConteggi();
     cont.innerHTML = '';
     cat.sub.forEach(sub => {
       const k = cat.id + '||' + sub.id;
-      cont.appendChild(scadCard(sub.icona, sub.nome, totSub[k] || 0, tdSub[k] || 0, () => apriScadSottocategoria(sub)));
+      const c = contSub[k] || { daFare: 0, inCorso: 0, scadute: 0 };
+      cont.appendChild(scadCard(sub.icona, sub.nome, c.daFare, c.inCorso, c.scadute, () => apriScadSottocategoria(sub)));
     });
   }
 
