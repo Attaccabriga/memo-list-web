@@ -767,6 +767,10 @@
           <h2 style="margin:0; font-size:18px;">Categorie</h2>
           <button id="scad-refresh" class="iconbtn" title="Aggiorna"></button>
         </div>
+        <div class="addbar" style="margin-bottom:16px;">
+          <input id="scad-nuova-cat" class="field" placeholder="Nome nuova categoria…" />
+          <button id="scad-add-cat" class="btn btn-green" title="Aggiungi categoria"></button>
+        </div>
         <div id="scad-cat-container"></div>
       </div>
       <!-- Livello 2: sottocategorie -->
@@ -1174,6 +1178,7 @@
   setEye();
   $('dafare-refresh-cat').innerHTML = svg(IC.refresh, 18);
   $('dafare-add-cat').innerHTML = svg(IC.plus, 22);
+  $('scad-add-cat').innerHTML = svg(IC.plus, 22);
   $('dafare-back-btn').innerHTML = svg(IC.chevronLeft, 22) + ' Indietro';
   $('dafare-add-task').innerHTML = svg(IC.plus, 22);
   $('dafare-sort-ic').innerHTML = svg(IC.sort, 18);
@@ -5446,6 +5451,42 @@
     } catch (e) { /* rete giu': mantieni l'albero attuale */ }
   }
 
+  // ---- [P4.2] Creazione categorie custom da web ----
+  // Scrive l'INTERO blob custom sulla riga dell'utente (upsert), esattamente come
+  // fa l'app: non si aggiorna un pezzetto, si riscrive tutto. Così web e app restano
+  // allineati e nessuna delle due cancella le custom dell'altra.
+  async function salvaScadCustomBlob(blob) {
+    if (!userId) return false;
+    const { error } = await sb.from('categorie_scadenze_custom')
+      .upsert({ user_id: userId, dati: blob, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
+    if (error) { alert('Errore salvataggio categoria: ' + error.message); return false; }
+    return true;
+  }
+  // Parte dal blob attuale (o da uno vuoto) e ne restituisce una COPIA normalizzata,
+  // così aggiungere una voce non perde mai le custom già presenti.
+  function scadBlobCorrente() {
+    const b = scadCustomBlob ? JSON.parse(JSON.stringify(scadCustomBlob)) : {};
+    if (!Array.isArray(b.categorieCustom)) b.categorieCustom = [];
+    if (!b.subcatCustomPerFissa || typeof b.subcatCustomPerFissa !== 'object') b.subcatCustomPerFissa = {};
+    return b;
+  }
+  async function creaScadCategoria() {
+    const nome = $('scad-nuova-cat').value.trim();
+    if (!nome) return;
+    // niente collisioni con le categorie esistenti (fisse per id o nome, o custom)
+    if (scadTree.some(c => norm(c.id) === norm(nome) || norm(c.nome) === norm(nome))) {
+      alert('Esiste già una categoria con questo nome.'); return;
+    }
+    // Prima scegli l'icona (stesso selettore dell'app: emoji o icona Tabler), poi crea.
+    apriSelettoreIcona(async (icona) => {
+      const blob = scadBlobCorrente();
+      blob.categorieCustom.push({ nome: nome, icona: icona, sottocategorie: [] });
+      if (!(await salvaScadCustomBlob(blob))) return;
+      $('scad-nuova-cat').value = '';
+      await caricaScadCategorie();   // ricarica blob + albero + conteggi dal server
+    });
+  }
+
   // Card riusabile (icona + nome a sinistra, conteggi a destra).
   // Allineata all'app: testo = quante "da fare" (non completate); pallino verde
   // (.badge) = in corso (non ancora scadute); pallino rosso (.count-pill) = scadute.
@@ -7009,6 +7050,8 @@
   { const _si = $('svuota-spuntati-ic'); if (_si) _si.innerHTML = svg(IC.trash, 16); }
   $('dafare-add-cat').onclick = creaCategoria;
   $('dafare-nuova-cat').addEventListener('keydown', e => { if (e.key === 'Enter') creaCategoria(); });
+  $('scad-add-cat').onclick = creaScadCategoria;
+  $('scad-nuova-cat').addEventListener('keydown', e => { if (e.key === 'Enter') creaScadCategoria(); });
   $('dafare-refresh-cat').onclick = caricaCategorie;
   $('dafare-back-btn').onclick = () => history.back();
   $('dafare-cerca').addEventListener('input', e => eseguiRicerca(e.target.value));
