@@ -792,6 +792,10 @@
           <h2 id="scad-cat-titolo" style="margin:0; font-size:19px; color:var(--accent, var(--green));"></h2>
         </div>
         <div id="scad-sub-container"></div>
+        <div class="addbar" id="scad-sub-addbar" style="margin-top:14px;">
+          <input id="scad-nuova-sub" class="field" placeholder="Nome nuova sottocategoria…" />
+          <button id="scad-add-sub" class="btn btn-green" title="Aggiungi sottocategoria"></button>
+        </div>
         <div id="scad-sub-empty" class="placeholder hidden">Scegli una categoria</div>
       </div>
       <!-- Livello 3: scadenze -->
@@ -1191,6 +1195,7 @@
   $('dafare-refresh-cat').innerHTML = svg(IC.refresh, 18);
   $('dafare-add-cat').innerHTML = svg(IC.plus, 22);
   $('scad-add-cat').innerHTML = svg(IC.plus, 22);
+  $('scad-add-sub').innerHTML = svg(IC.plus, 22);
   $('dafare-back-btn').innerHTML = svg(IC.chevronLeft, 22) + ' Indietro';
   $('dafare-add-task').innerHTML = svg(IC.plus, 22);
   $('dafare-sort-ic').innerHTML = svg(IC.sort, 18);
@@ -3399,7 +3404,7 @@
     const ren = document.createElement('button'); ren.className = 'del'; ren.style.color = 'var(--blue)'; ren.innerHTML = svg(IC.pencil, 17); ren.title = 'Rinomina'; ren.onclick = () => rinominaDocumento(d);
     const del = document.createElement('button'); del.className = 'del'; del.innerHTML = svg(IC.trash, 17); del.title = 'Elimina'; del.onclick = () => eliminaDocumento(d);
     if (codiciDelDoc(d).length) {
-      const bc = document.createElement('button'); bc.className = 'del'; bc.style.color = 'var(--green)';
+      const bc = document.createElement('button'); bc.className = 'del'; bc.style.color = 'var(--accent, var(--green))';
       bc.innerHTML = svg(IC.barcode, 17); bc.title = 'Mostra codice a barre'; bc.onclick = () => mostraCodiceBarre(d);
       az.appendChild(bc);
     }
@@ -3913,7 +3918,7 @@
     div.appendChild(nome);
     const right = document.createElement('span'); right.className = 'cat-right';
     if (l.daComprare > 0) {
-      const c = document.createElement('span'); c.className = 'badge'; c.style.color = 'var(--green)';
+      const c = document.createElement('span'); c.className = 'badge'; c.style.color = 'var(--accent, var(--green))';
       c.title = l.daComprare + ' da comprare'; c.innerHTML = svg(IC.cart, 13) + ' ' + l.daComprare;
       right.appendChild(c);
     }
@@ -3942,7 +3947,7 @@
   function renderListaEdit(div, l) {
     div.innerHTML = ''; div.onclick = null; div.style.gap = '8px';
     const input = document.createElement('input'); input.className = 'field'; input.style.margin = '0'; input.style.flex = '1'; input.value = l.nome || '';
-    const salva = document.createElement('button'); salva.className = 'iconbtn'; salva.style.color = 'var(--green)'; salva.title = 'Salva'; salva.innerHTML = svg(IC.checkSimple, 18);
+    const salva = document.createElement('button'); salva.className = 'iconbtn'; salva.style.color = 'var(--accent, var(--green))'; salva.title = 'Salva'; salva.innerHTML = svg(IC.checkSimple, 18);
     const annulla = document.createElement('button'); annulla.className = 'iconbtn'; annulla.title = 'Annulla'; annulla.innerHTML = svg(IC.x, 18);
     const chiudi = () => div.replaceWith(freshListaCard(l));
     const doSave = async () => {
@@ -4496,7 +4501,7 @@
     const input = document.createElement('input');
     input.className = 'field'; input.style.margin = '0'; input.style.flex = '1'; input.value = t.testo;
     const salva = document.createElement('button');
-    salva.className = 'del'; salva.style.color = 'var(--green)'; salva.innerHTML = svg(IC.checkSimple, 20); salva.title = 'Salva';
+    salva.className = 'del'; salva.style.color = 'var(--accent, var(--green))'; salva.innerHTML = svg(IC.checkSimple, 20); salva.title = 'Salva';
     const annulla = document.createElement('button');
     annulla.className = 'del'; annulla.innerHTML = svg(IC.x, 18); annulla.title = 'Annulla';
     const doSave = async () => {
@@ -4904,7 +4909,7 @@
   function titoloFormMemo(prefisso) {
     const t = $('memo-form-titolo'); if (!t) return;
     if (memoCatCorrente && memoCatCorrente.nome) {
-      t.innerHTML = escapeHtml(prefisso) + ' in <span style="color:var(--green);font-weight:700;">' + escapeHtml(memoCatCorrente.nome) + '</span>';
+      t.innerHTML = escapeHtml(prefisso) + ' in <span style="color:var(--accent, var(--green));font-weight:700;">' + escapeHtml(memoCatCorrente.nome) + '</span>';
     } else { t.textContent = prefisso; }
   }
   // [NUOVO MEMO] Precompila data = oggi e ora = ora piena successiva (come in app).
@@ -5498,6 +5503,37 @@
       await caricaScadCategorie();   // ricarica blob + albero + conteggi dal server
     });
   }
+  // [P4.2 Passo 2] Crea una sottocategoria dentro la categoria aperta.
+  // Se la categoria è FISSA → la custom va in subcatCustomPerFissa[idFissa];
+  // se è CUSTOM (id === nome) → va dentro le sue sottocategorie. In entrambi i
+  // casi riscriviamo l'intero blob, come fa l'app.
+  async function creaScadSottocategoria() {
+    if (!scadCat) return;
+    const nome = $('scad-nuova-sub').value.trim();
+    if (!nome) return;
+    if ((scadCat.sub || []).some(s => norm(s.id) === norm(nome) || norm(s.nome) === norm(nome))) {
+      alert('Esiste già una sottocategoria con questo nome in questa categoria.'); return;
+    }
+    apriSelettoreIcona(async (icona) => {
+      const blob = scadBlobCorrente();
+      const isFissa = SCAD_TREE.some(c => c.id === scadCat.id);
+      if (isFissa) {
+        if (!Array.isArray(blob.subcatCustomPerFissa[scadCat.id])) blob.subcatCustomPerFissa[scadCat.id] = [];
+        blob.subcatCustomPerFissa[scadCat.id].push({ nome: nome, icona: icona });
+      } else {
+        const cc = (blob.categorieCustom || []).find(c => c && c.nome === scadCat.id);
+        if (!cc) { alert('Categoria non trovata nel salvataggio. Riprova.'); return; }
+        if (!Array.isArray(cc.sottocategorie)) cc.sottocategorie = [];
+        cc.sottocategorie.push({ nome: nome, icona: icona });
+      }
+      if (!(await salvaScadCustomBlob(blob))) return;
+      $('scad-nuova-sub').value = '';
+      await caricaScadCustom();                 // ricarica blob + albero dal server
+      const aggiornata = scadTree.find(c => c.id === scadCat.id);
+      if (aggiornata) scadCat = aggiornata;     // riaggancio all'oggetto aggiornato
+      caricaScadSottocategorie(scadCat);        // ridisegno la lista con la nuova voce
+    });
+  }
 
   // Card riusabile (icona + nome a sinistra, conteggi a destra).
   // Allineata all'app: testo = quante "da fare" (non completate); pallino verde
@@ -5527,6 +5563,7 @@
     const show = (id, s) => { const el = $(id); if (el) el.classList.toggle('hidden', !s); };
     // contenuto vs segnaposto (in entrambe le modalità)
     show('scad-sub-container', !!scadCat);
+    show('scad-sub-addbar', !!scadCat);
     show('scad-sub-empty', !scadCat);
     show('scad-item-body', !!scadSub);
     show('scad-item-empty', !scadSub);
@@ -6678,7 +6715,7 @@
         wrap.appendChild(chip);
         if (codiciDelDoc(d).length) {
           const bc = document.createElement('button'); bc.type = 'button'; bc.className = 'del'; bc.title = 'Mostra codice a barre';
-          bc.style.cssText = 'color:var(--green); padding:2px 4px;'; bc.innerHTML = svg(IC.barcode, 15);
+          bc.style.cssText = 'color:var(--accent, var(--green)); padding:2px 4px;'; bc.innerHTML = svg(IC.barcode, 15);
           bc.onclick = () => mostraCodiceBarre(d);
           wrap.appendChild(bc);
         }
@@ -7064,6 +7101,8 @@
   $('dafare-nuova-cat').addEventListener('keydown', e => { if (e.key === 'Enter') creaCategoria(); });
   $('scad-add-cat').onclick = creaScadCategoria;
   $('scad-nuova-cat').addEventListener('keydown', e => { if (e.key === 'Enter') creaScadCategoria(); });
+  $('scad-add-sub').onclick = creaScadSottocategoria;
+  $('scad-nuova-sub').addEventListener('keydown', e => { if (e.key === 'Enter') creaScadSottocategoria(); });
   $('dafare-refresh-cat').onclick = caricaCategorie;
   $('dafare-back-btn').onclick = () => history.back();
   $('dafare-cerca').addEventListener('input', e => eseguiRicerca(e.target.value));
