@@ -2748,7 +2748,7 @@
     const chiudi = () => { if (bar.parentNode) bar.parentNode.removeChild(bar); };
     bar.querySelector('#prom-hint-x').onclick = chiudi;
     bar.querySelector('#prom-hint-no').onclick = () => { try { localStorage.setItem('promemoria_hint_modo', 'mai'); localStorage.removeItem('promemoria_hint_off'); } catch (e) {} chiudi(); };
-    setTimeout(() => { bar.classList.add('via'); setTimeout(chiudi, 400); }, 3500);
+    setTimeout(() => { bar.classList.add('via'); setTimeout(chiudi, 400); }, 1750);
     requestAnimationFrame(() => bar.classList.add('on'));
   }
 
