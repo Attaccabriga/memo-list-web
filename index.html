@@ -1789,7 +1789,7 @@
   }
 
   async function profEliminaGruppo(g) {
-    if (!confirm('Eliminare il gruppo "' + g.nome + '"?\nVerranno rimossi tutti i membri dal gruppo.')) return;
+    if (!(await confermaPopup('Eliminare il gruppo "' + g.nome + '"?\nVerranno rimossi tutti i membri dal gruppo.', { titolo: 'Elimina gruppo', ok: 'Elimina', pericolo: true }))) return;
     try {
       await sb.from('membri_gruppo').delete().eq('gruppo_id', g.id);
       await sb.from('gruppi').delete().eq('id', g.id);
@@ -1820,7 +1820,7 @@
   }
 
   async function profRimuoviMembro(m) {
-    if (!confirm('Rimuovere ' + (m.email || 'questo utente') + ' dal gruppo?')) return;
+    if (!(await confermaPopup('Rimuovere ' + (m.email || 'questo utente') + ' dal gruppo?', { titolo: 'Rimuovi membro', ok: 'Rimuovi', pericolo: true }))) return;
     try {
       await sb.from('membri_gruppo').delete().eq('id', m.id);
       await caricaMembriProf(profGruppoSel.id); renderProfilo();
@@ -1831,7 +1831,7 @@
     const inp = $('prof-del-email'); const digitata = (inp.value || '').trim().toLowerCase();
     const mia = (profUtente && profUtente.email || '').trim().toLowerCase();
     if (digitata !== mia) { homeToast('L\'email non corrisponde'); return; }
-    if (!confirm('Sei assolutamente sicuro? Questa operazione elimina il tuo account e TUTTI i tuoi dati in modo definitivo.')) return;
+    if (!(await confermaPopup('Sei assolutamente sicuro? Questa operazione elimina il tuo account e TUTTI i tuoi dati in modo definitivo.', { titolo: 'Elimina account', ok: 'Elimina tutto', pericolo: true }))) return;
     const btn = $('prof-del-btn'); if (btn) { btn.disabled = true; btn.textContent = 'Eliminazione…'; }
     try {
       const { error } = await sb.functions.invoke('delete-account', { body: {} });
@@ -2256,7 +2256,7 @@
   }
 
   async function eliminaNota(n) {
-    if (!confirm('Eliminare questa nota?')) return;
+    if (!(await confermaPopup('Eliminare questa nota?', { titolo: 'Elimina nota', ok: 'Elimina', pericolo: true }))) return;
     const { error } = await sb.from('note').delete().eq('id', n.id);
     if (error) { homeToast('Errore: ' + error.message); return; }
     await caricaNote();
@@ -2319,7 +2319,7 @@
 
   // [ALLEGATI NOTE] rimuove un allegato: cancella il file e la riga documento.
   async function rimuoviAllegatoNota(d) {
-    if (!confirm('Rimuovere l\'allegato «' + (d.titolo || d.nome_file || 'documento') + '»?')) return;
+    if (!(await confermaPopup('Rimuovere l\'allegato «' + (d.titolo || d.nome_file || 'documento') + '»?', { titolo: 'Rimuovi allegato', ok: 'Rimuovi', pericolo: true }))) return;
     try { if (d.storage_path) await sb.storage.from(DOC_BUCKET).remove([d.storage_path]); } catch (e) {}
     const { error } = await sb.from('documenti').delete().eq('id', d.id);
     if (error) { homeToast('Errore rimozione: ' + error.message); return; }
@@ -2477,7 +2477,7 @@
   }
 
   async function eliminaArchivio(item) {
-    if (!confirm('Eliminare definitivamente «' + (item.titolo || item.testo || 'questo elemento') + '»?\nNon potrà più essere ripristinato.')) return;
+    if (!(await confermaPopup('Eliminare definitivamente «' + (item.titolo || item.testo || 'questo elemento') + '»?\nNon potrà più essere ripristinato.', { titolo: 'Elimina definitivamente', ok: 'Elimina', pericolo: true }))) return;
     const { error } = await sb.from('archivio').delete().eq('id', item.id);
     if (error) { homeToast('Errore: ' + error.message); return; }
     await caricaArchivio();
@@ -3386,7 +3386,7 @@
   }
 
   async function eliminaRicetta(r) {
-    if (!confirm('Eliminare la ricetta «' + (r.nome || '') + '»?')) return;
+    if (!(await confermaPopup('Eliminare la ricetta «' + (r.nome || '') + '»?', { titolo: 'Elimina ricetta', ok: 'Elimina', pericolo: true }))) return;
     const { error } = await sb.from('ricette').delete().eq('id', r.id);
     if (error) { homeToast('Errore: ' + error.message); return; }
     ricVista = 'lista'; ricSel = null;
@@ -3498,7 +3498,7 @@
   }
 
   async function eliminaDocumento(d) {
-    if (!confirm('Eliminare «' + (d.titolo || d.nome_file || 'questo documento') + '»?')) return;
+    if (!(await confermaPopup('Eliminare «' + (d.titolo || d.nome_file || 'questo documento') + '»?', { titolo: 'Elimina documento', ok: 'Elimina', pericolo: true }))) return;
     try { if (d.storage_path) await sb.storage.from(DOC_BUCKET).remove([d.storage_path]); } catch (e) {}
     const { error } = await sb.from('documenti').delete().eq('id', d.id);
     if (error) { homeToast('Errore: ' + error.message); return; }
@@ -3999,7 +3999,7 @@
     const msg = owner
       ? ('Eliminare la lista "' + (l.nome || '') + '" e tutti i suoi articoli?')
       : ('Rimuovere dalla tua vista la lista condivisa "' + (l.nome || '') + '"?');
-    if (!confirm(msg)) return;
+    if (!(await confermaPopup(msg, { titolo: 'Elimina lista', ok: 'Conferma', pericolo: true }))) return;
     if (owner) {
       const { error } = await sb.from('liste_spesa').delete().eq('id', l.id);
       if (error) { alert('Errore eliminazione: ' + error.message); return; }
@@ -4248,7 +4248,7 @@
     if (!listaCorrente) return;
     const n = parseInt(($('svuota-spuntati').dataset.n) || '0', 10);
     if (!n) return;
-    if (!confirm('Rimuovere ' + n + (n === 1 ? ' articolo spuntato?' : ' articoli spuntati?'))) return;
+    if (!(await confermaPopup('Rimuovere ' + n + (n === 1 ? ' articolo spuntato?' : ' articoli spuntati?'), { titolo: 'Rimuovi spuntati', ok: 'Rimuovi', pericolo: true }))) return;
     const { error } = await sb.from('articoli_spesa').delete().eq('lista_id', listaCorrente.id).eq('spuntato', true);
     if (error) { alert('Errore rimozione: ' + error.message); return; }
     await caricaArticoli();
@@ -4466,7 +4466,7 @@
   }
 
   async function eliminaCategoria(nome) {
-    if (!confirm('Eliminare la categoria "' + nome + '"?\n(I task già presenti non vengono cancellati.)')) return;
+    if (!(await confermaPopup('Eliminare la categoria "' + nome + '"?\n(I task già presenti non vengono cancellati.)', { titolo: 'Elimina categoria', ok: 'Elimina', pericolo: true }))) return;
     const { error } = await sb.from('categorie_todo').delete().eq('nome', nome).eq('user_id', userId);
     if (error) { alert('Errore eliminazione categoria: ' + error.message); return; }
     await caricaCategorie();
@@ -4768,7 +4768,7 @@
     await caricaMemoCategorie();
   }
   async function eliminaMemoCategoria(nome) {
-    if (!confirm('Eliminare la categoria "' + nome + '"?\n(I memo già presenti non vengono cancellati.)')) return;
+    if (!(await confermaPopup('Eliminare la categoria "' + nome + '"?\n(I memo già presenti non vengono cancellati.)', { titolo: 'Elimina categoria', ok: 'Elimina', pericolo: true }))) return;
     const arr = (await leggiBlobMemo()).filter(x => x && norm(x.nome) !== norm(nome));
     const err = await salvaBlobMemo(arr);
     if (err) { alert('Errore eliminazione categoria: ' + err.message); return; }
@@ -5397,7 +5397,7 @@
 
   // [ALLEGATI MEMO] rimuove un allegato: cancella il file e la riga documento.
   async function rimuoviAllegatoMemo(d) {
-    if (!confirm('Rimuovere l\'allegato «' + (d.titolo || d.nome_file || 'documento') + '»?')) return;
+    if (!(await confermaPopup('Rimuovere l\'allegato «' + (d.titolo || d.nome_file || 'documento') + '»?', { titolo: 'Rimuovi allegato', ok: 'Rimuovi', pericolo: true }))) return;
     try { if (d.storage_path) await sb.storage.from(DOC_BUCKET).remove([d.storage_path]); } catch (e) {}
     const { error } = await sb.from('documenti').delete().eq('id', d.id);
     if (error) { homeToast('Errore rimozione: ' + error.message); return; }
@@ -6234,7 +6234,7 @@
 
   // [ALLEGATI SCAD] rimuove un allegato: cancella il file e la riga documento.
   async function rimuoviAllegatoScad(d) {
-    if (!confirm('Rimuovere l\'allegato «' + (d.titolo || d.nome_file || 'documento') + '»?')) return;
+    if (!(await confermaPopup('Rimuovere l\'allegato «' + (d.titolo || d.nome_file || 'documento') + '»?', { titolo: 'Rimuovi allegato', ok: 'Rimuovi', pericolo: true }))) return;
     try { if (d.storage_path) await sb.storage.from(DOC_BUCKET).remove([d.storage_path]); } catch (e) {}
     const { error } = await sb.from('documenti').delete().eq('id', d.id);
     if (error) { homeToast('Errore rimozione: ' + error.message); return; }
@@ -6749,7 +6749,7 @@
   async function collegaDocEsistenteApp(a, doc, chiudi) {
     if (!a || !a.client_id || !doc) return;
     if (doc.collegato_tipo && doc.collegato_client_id && doc.collegato_client_id !== a.client_id) {
-      if (!confirm('«' + (doc.titolo || doc.nome_file || 'Documento') + '» è già collegato a un altro elemento. Spostarlo su questo appuntamento?')) return;
+      if (!(await confermaPopup('«' + (doc.titolo || doc.nome_file || 'Documento') + '» è già collegato a un altro elemento. Spostarlo su questo appuntamento?', { titolo: 'Sposta documento', ok: 'Sposta' }))) return;
     }
     const { error } = await sb.from('documenti').update({ collegato_tipo: 'appuntamento', collegato_client_id: a.client_id }).eq('id', doc.id);
     if (error) { homeToast('Errore collegamento: ' + error.message); return; }
@@ -6760,7 +6760,7 @@
 
   // [ALLEGATI APP] rimuove un allegato: cancella il file e la riga documento.
   async function rimuoviAllegatoApp(d) {
-    if (!confirm('Rimuovere l\'allegato «' + (d.titolo || d.nome_file || 'documento') + '»?')) return;
+    if (!(await confermaPopup('Rimuovere l\'allegato «' + (d.titolo || d.nome_file || 'documento') + '»?', { titolo: 'Rimuovi allegato', ok: 'Rimuovi', pericolo: true }))) return;
     try { if (d.storage_path) await sb.storage.from(DOC_BUCKET).remove([d.storage_path]); } catch (e) {}
     const { error } = await sb.from('documenti').delete().eq('id', d.id);
     if (error) { homeToast('Errore rimozione: ' + error.message); return; }
