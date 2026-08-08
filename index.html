@@ -5535,11 +5535,75 @@
     });
   }
 
+  // [P4.2 Passo 3] Eliminazione categorie/sottocategorie CUSTOM da web.
+  // Conta le scadenze contenute; se >0 avvisa che verranno eliminate anch'esse.
+  async function contaScadDi(catId, subId) {
+    let q = sb.from('scadenze').select('id', { count: 'exact', head: true }).eq('categoria', catId);
+    if (subId != null) q = q.eq('sottocategoria', subId);
+    const { count, error } = await q;
+    if (error) { return null; }
+    return count || 0;
+  }
+  async function eliminaScadenzeDi(catId, subId) {
+    let q = sb.from('scadenze').delete().eq('categoria', catId);
+    if (subId != null) q = q.eq('sottocategoria', subId);
+    const { error } = await q;
+    return !error;
+  }
+  async function eliminaScadCategoria(cat) {
+    if (!cat || !cat.custom) return;   // solo categorie custom (le fisse non si toccano)
+    const n = await contaScadDi(cat.id, null);
+    if (n === null) { alert('Errore nel conteggio delle scadenze. Riprova.'); return; }
+    const msg = n > 0
+      ? 'Eliminare la categoria «' + cat.nome + '» e le sue sottocategorie?\n\nContiene ' + n + (n === 1 ? ' scadenza che verrà eliminata' : ' scadenze che verranno eliminate') + ' DEFINITIVAMENTE. L\'operazione non è reversibile.'
+      : 'Eliminare la categoria «' + cat.nome + '»?';
+    if (!confirm(msg)) return;
+    if (n > 0 && !(await eliminaScadenzeDi(cat.id, null))) { alert('Errore durante l\'eliminazione delle scadenze.'); return; }
+    const blob = scadBlobCorrente();
+    blob.categorieCustom = (blob.categorieCustom || []).filter(c => c && c.nome !== cat.id);
+    if (!(await salvaScadCustomBlob(blob))) return;
+    if (scadCat && scadCat.id === cat.id) { scadCat = null; scadSub = null; }
+    await caricaScadCustom();
+    mostraScadCategorie();
+    caricaScadCategorie();
+  }
+  async function eliminaScadSottocategoria(cat, sub) {
+    if (!cat || !sub || !sub.custom) return;   // solo sottocategorie custom
+    const n = await contaScadDi(cat.id, sub.id);
+    if (n === null) { alert('Errore nel conteggio delle scadenze. Riprova.'); return; }
+    const msg = n > 0
+      ? 'Eliminare la sottocategoria «' + sub.nome + '»?\n\nContiene ' + n + (n === 1 ? ' scadenza che verrà eliminata' : ' scadenze che verranno eliminate') + ' DEFINITIVAMENTE. L\'operazione non è reversibile.'
+      : 'Eliminare la sottocategoria «' + sub.nome + '»?';
+    if (!confirm(msg)) return;
+    if (n > 0 && !(await eliminaScadenzeDi(cat.id, sub.id))) { alert('Errore durante l\'eliminazione delle scadenze.'); return; }
+    const blob = scadBlobCorrente();
+    const isFissa = SCAD_TREE.some(c => c.id === cat.id);
+    const uguale = (s) => (typeof s === 'string' ? s : (s && s.nome)) === sub.id;
+    if (isFissa) {
+      if (Array.isArray(blob.subcatCustomPerFissa[cat.id])) {
+        blob.subcatCustomPerFissa[cat.id] = blob.subcatCustomPerFissa[cat.id].filter(s => !uguale(s));
+        if (blob.subcatCustomPerFissa[cat.id].length === 0) delete blob.subcatCustomPerFissa[cat.id];
+      }
+    } else {
+      const cc = (blob.categorieCustom || []).find(c => c && c.nome === cat.id);
+      if (cc && Array.isArray(cc.sottocategorie)) cc.sottocategorie = cc.sottocategorie.filter(s => !uguale(s));
+    }
+    if (!(await salvaScadCustomBlob(blob))) return;
+    if (scadSub && scadSub.id === sub.id) scadSub = null;
+    await caricaScadCustom();
+    const aggiornata = scadTree.find(c => c.id === cat.id);
+    if (aggiornata) scadCat = aggiornata;
+    caricaScadSottocategorie(scadCat || cat);
+    aggiornaVisibilitaColonneScad();
+  }
+
   // Card riusabile (icona + nome a sinistra, conteggi a destra).
   // Allineata all'app: testo = quante "da fare" (non completate); pallino verde
   // (.badge) = in corso (non ancora scadute); pallino rosso (.count-pill) = scadute.
   // da fare = in corso + scadute.
-  function scadCard(icona, nome, daFare, inCorso, scadute, onClick) {
+  // onDelete (facoltativo): se passato, aggiunge un cestino a destra — usato solo
+  // sulle voci CUSTOM. Il click sul cestino non apre la card (stopPropagation).
+  function scadCard(icona, nome, daFare, inCorso, scadute, onClick, onDelete) {
     const div = document.createElement('div'); div.className = 'lista-card';
     const n = document.createElement('span'); n.className = 'lista-nome';
     n.style.display = 'inline-flex'; n.style.alignItems = 'center'; n.style.gap = '9px';
@@ -5551,6 +5615,13 @@
     right.appendChild(t);
     if (inCorso > 0) { const pill = document.createElement('span'); pill.className = 'badge'; pill.textContent = inCorso; right.appendChild(pill); }
     if (scadute > 0) { const pill = document.createElement('span'); pill.className = 'count-pill'; pill.textContent = scadute; right.appendChild(pill); }
+    if (onDelete) {
+      const del = document.createElement('button'); del.className = 'iconbtn';
+      del.title = 'Elimina'; del.style.color = 'var(--danger)'; del.style.marginLeft = '4px';
+      del.innerHTML = svg(IC.trash, 16);
+      del.onclick = (e) => { e.stopPropagation(); onDelete(); };
+      right.appendChild(del);
+    }
     div.appendChild(right);
     div.onclick = onClick;
     return div;
@@ -5620,7 +5691,7 @@
     cont.innerHTML = '';
     scadTree.forEach(cat => {
       const c = contCat[cat.id] || { daFare: 0, inCorso: 0, scadute: 0 };
-      cont.appendChild(scadCard(cat.icona, cat.nome, c.daFare, c.inCorso, c.scadute, () => apriScadCategoria(cat)));
+      cont.appendChild(scadCard(cat.icona, cat.nome, c.daFare, c.inCorso, c.scadute, () => apriScadCategoria(cat), cat.custom ? () => eliminaScadCategoria(cat) : null));
     });
     // [CALENDARIO] se stiamo aprendo una scadenza precisa dal calendario, entra nella sua categoria+sottocategoria
     if (calApriTarget && calApriTarget.modulo === 'scadenze') calApriScadenzaSePendente();
@@ -5652,7 +5723,7 @@
     cat.sub.forEach(sub => {
       const k = cat.id + '||' + sub.id;
       const c = contSub[k] || { daFare: 0, inCorso: 0, scadute: 0 };
-      cont.appendChild(scadCard(sub.icona, sub.nome, c.daFare, c.inCorso, c.scadute, () => apriScadSottocategoria(sub)));
+      cont.appendChild(scadCard(sub.icona, sub.nome, c.daFare, c.inCorso, c.scadute, () => apriScadSottocategoria(sub), sub.custom ? () => eliminaScadSottocategoria(cat, sub) : null));
     });
   }
 
