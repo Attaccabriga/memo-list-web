@@ -40,6 +40,11 @@
   .lista-card { background:var(--card2); border-left:4px solid var(--green); border-radius:12px; padding:14px 16px; margin-bottom:10px; cursor:pointer; display:flex; align-items:center; justify-content:space-between; }
   .lista-card:hover { background:#20244a; }
   .lista-nome { color:var(--green); font-weight:700; font-size:17px; }
+  /* [P4.2 pilota] Scadenze = arancione come nell'app. Regole circoscritte al solo
+     modulo #mod-scadenze: le altre sezioni restano col tema verde condiviso. */
+  #mod-scadenze .lista-card { border-left-color:#EF9F27; }
+  #mod-scadenze .lista-nome { color:#EF9F27; }
+  #mod-scadenze .btn-green { background:#EF9F27; }
   .badge { background:#1a3a1a; color:#4CAF50; border:1px solid #2e6e2e; border-radius:999px; padding:2px 10px; font-size:12px; font-weight:700; display:inline-flex; align-items:center; gap:4px; }
   .reparto-h { color:var(--green); font-size:12px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; margin:16px 0 4px; }
   .item { display:flex; align-items:center; gap:12px; padding:11px 4px; border-bottom:1px solid #20244a; }
@@ -767,17 +772,17 @@
           <h2 style="margin:0; font-size:18px;">Categorie</h2>
           <button id="scad-refresh" class="iconbtn" title="Aggiorna"></button>
         </div>
-        <div class="addbar" style="margin-bottom:16px;">
+        <div id="scad-cat-container"></div>
+        <div class="addbar" style="margin-top:14px;">
           <input id="scad-nuova-cat" class="field" placeholder="Nome nuova categoria…" />
           <button id="scad-add-cat" class="btn btn-green" title="Aggiungi categoria"></button>
         </div>
-        <div id="scad-cat-container"></div>
       </div>
       <!-- Livello 2: sottocategorie -->
       <div id="scad-sub-view" class="scad-col hidden">
         <button id="scad-back-cat" class="back"></button>
         <div class="between" style="margin:6px 0 8px;">
-          <h2 id="scad-cat-titolo" style="margin:0; font-size:19px; color:var(--green);"></h2>
+          <h2 id="scad-cat-titolo" style="margin:0; font-size:19px; color:#EF9F27;"></h2>
         </div>
         <div id="scad-sub-container"></div>
         <div id="scad-sub-empty" class="placeholder hidden">Scegli una categoria</div>
@@ -788,7 +793,7 @@
         <div id="scad-item-empty" class="placeholder hidden">Scegli una sottocategoria</div>
         <div id="scad-item-body">
         <div class="between" style="margin:6px 0 4px;">
-          <h2 id="scad-sub-titolo" style="margin:0; font-size:19px; color:var(--green);"></h2>
+          <h2 id="scad-sub-titolo" style="margin:0; font-size:19px; color:#EF9F27;"></h2>
         </div>
         <div id="scad-item-container"></div>
         <div id="scad-item-vuoto" class="muted center hidden" style="padding:16px;">Nessuna scadenza. Tocca «＋ Nuova scadenza» per aggiungerne.</div>
@@ -1165,8 +1170,8 @@
   try { ordine = localStorage.getItem('ordine_spesa') || 'reparto'; } catch (e) {}
 
   // ====== ICONE STATICHE ======
-  $('logo-login').innerHTML = svg(IC.cart, 24);
-  $('logo-app').innerHTML = svg(IC.cart, 24);
+  $('logo-login').innerHTML = '<img src="icon-192.png" alt="Memo List" style="width:26px; height:26px; border-radius:6px; display:block;">';
+  $('logo-app').innerHTML = '<img src="icon-192.png" alt="Memo List" style="width:26px; height:26px; border-radius:6px; display:block;">';
   $('refresh-liste').innerHTML = svg(IC.refresh, 18);
   $('add-lista').innerHTML = svg(IC.plus, 22);
   $('add-articolo').innerHTML = svg(IC.plus, 22);
