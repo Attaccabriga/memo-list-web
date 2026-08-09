@@ -7033,46 +7033,73 @@
   }
   let shareCtx = null;
   async function apriCondivisione(tabella, item, onDone) {
-    shareCtx = { tabella, item, esistenti: [], selezionati: new Set(), membri: [], onDone };
+    shareCtx = { tabella, item, esistenti: [], selezionati: new Set(), membri: [], gruppi: [], gruppoSel: null, onDone };
     const body = $('share-modal-body');
     body.innerHTML = '<p class="muted">Caricamento…</p>';
     $('share-modal').classList.remove('hidden');
     try {
       const [gruppiRes, condRes] = await Promise.all([
-        sb.from('membri_gruppo').select('gruppo_id').eq('user_id', userId),
+        sb.from('membri_gruppo').select('gruppo_id, gruppi(nome)').eq('user_id', userId),
         sb.from('condivisioni').select('user_id').eq('tabella', tabella).eq('elemento_id', String(item.id)),
       ]);
-      // TUTTI i gruppi dell'utente (non solo il primo), come nell'app.
-      const mieiGruppi = [...new Set((gruppiRes.data || []).map(r => r.gruppo_id).filter(Boolean))];
+      // [P2 modale gruppi] tutti i gruppi dell'utente, con il loro nome, deduplicati.
+      const gruppiMap = new Map();
+      (gruppiRes.data || []).forEach(r => {
+        if (r.gruppo_id && !gruppiMap.has(r.gruppo_id)) {
+          gruppiMap.set(r.gruppo_id, { id: r.gruppo_id, nome: (r.gruppi && r.gruppi.nome) || 'Gruppo' });
+        }
+      });
+      shareCtx.gruppi = [...gruppiMap.values()];
       const esistenti = (condRes.data || []).map(c => c.user_id);
       shareCtx.esistenti = esistenti;
       shareCtx.selezionati = new Set(esistenti);
-      let membri = [];
-      if (mieiGruppi.length) {
-        const { data: m } = await sb.from('membri_gruppo').select('user_id').in('gruppo_id', mieiGruppi).neq('user_id', userId);
-        if (m && m.length) {
-          // Dedup: una persona in più gruppi deve comparire una sola volta.
-          const ids = [...new Set(m.map(x => x.user_id))];
-          const { data: utenti } = await sb.from('utenti_pubblici').select('id, email, raw_user_meta_data').in('id', ids);
-          membri = ids.map(uid => {
-            const u = (utenti || []).find(u => u.id === uid);
-            const meta = (u && u.raw_user_meta_data) || {};
-            const nick = meta.nickname || (u && u.email);
-            return { user_id: uid, nickname: nick || uid, email: (u && u.email) || '', avatar: meta.avatar_url || null };
-          });
-        }
-      }
-      shareCtx.membri = membri;
-      renderShareBody();
+      // Seleziona il primo gruppo e carica i suoi membri.
+      await caricaMembriGruppoWeb(shareCtx.gruppi.length ? shareCtx.gruppi[0].id : null);
     } catch (e) {
       body.innerHTML = '<p class="err">Errore: ' + (e.message || e) + '</p>';
     }
   }
+  // [P2 modale gruppi] carica i membri (diversi da me) di UN gruppo e ridisegna il modale.
+  async function caricaMembriGruppoWeb(gruppoId) {
+    shareCtx.gruppoSel = gruppoId;
+    let membri = [];
+    if (gruppoId) {
+      const { data: m } = await sb.from('membri_gruppo').select('user_id').eq('gruppo_id', gruppoId).neq('user_id', userId);
+      if (m && m.length) {
+        const ids = [...new Set(m.map(x => x.user_id))];
+        const { data: utenti } = await sb.from('utenti_pubblici').select('id, email, raw_user_meta_data').in('id', ids);
+        membri = ids.map(uid => {
+          const u = (utenti || []).find(u => u.id === uid);
+          const meta = (u && u.raw_user_meta_data) || {};
+          const nick = meta.nickname || (u && u.email);
+          return { user_id: uid, nickname: nick || uid, email: (u && u.email) || '', avatar: meta.avatar_url || null };
+        });
+      }
+    }
+    shareCtx.membri = membri;
+    renderShareBody();
+  }
   function renderShareBody() {
     const body = $('share-modal-body');
     body.innerHTML = '';
+    // [P2 modale gruppi] selettore del gruppo: solo con più di un gruppo.
+    if (shareCtx.gruppi && shareCtx.gruppi.length > 1) {
+      const bar = document.createElement('div');
+      bar.style.cssText = 'display:flex;gap:8px;overflow-x:auto;margin:0 0 12px;padding-bottom:4px;';
+      shareCtx.gruppi.forEach(g => {
+        const sel = shareCtx.gruppoSel === g.id;
+        const chip = document.createElement('button');
+        chip.textContent = g.nome;
+        chip.style.cssText = 'padding:6px 12px;border-radius:8px;border:1px solid ' + (sel ? '#4f9deb' : '#2a2a4e') + ';background:' + (sel ? '#16213e' : 'transparent') + ';color:' + (sel ? '#4f9deb' : '#8a90b4') + ';font-size:13px;font-weight:' + (sel ? '600' : '400') + ';cursor:pointer;white-space:nowrap;flex:0 0 auto;';
+        chip.onclick = () => caricaMembriGruppoWeb(g.id);
+        bar.appendChild(chip);
+      });
+      body.appendChild(bar);
+    }
     if (!shareCtx.membri.length) {
-      body.innerHTML = '<p class="muted center" style="padding:16px;">Non hai ancora persone con cui condividere. Aggiungi un membro al gruppo dall\'app.</p>';
+      const vuoto = document.createElement('p'); vuoto.className = 'muted center'; vuoto.style.padding = '16px';
+      vuoto.textContent = 'Nessuna persona in questo gruppo. Aggiungi un membro al gruppo dall\'app.';
+      body.appendChild(vuoto);
       return;
     }
     const intro = document.createElement('p'); intro.className = 'muted'; intro.style.fontSize = '13px'; intro.style.margin = '0 0 8px';
