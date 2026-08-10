@@ -1175,6 +1175,8 @@
   const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : ('xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{const r=Math.random()*16|0;return (c==='x'?r:(r&0x3|0x8)).toString(16);})));
 
   let userId = null;
+  // [CONDIVISI §2.2] rubrica id→nickname, per "Condiviso da <nome>" (come l'app).
+  let mappaUtentiWeb = {};
   let listaCorrente = null;
   let canaleSpesa = null;
   let recognition = null, micBuffer = '', micAttivo = false;
@@ -2082,10 +2084,17 @@
     const edit = document.createElement('button'); edit.className = 'del'; edit.style.color = 'var(--blue)'; edit.innerHTML = svg(IC.pencil, 17); edit.title = 'Modifica'; edit.onclick = () => apriNotaForm(n);
     const dup = document.createElement('button'); dup.className = 'del'; dup.style.color = 'var(--blue)'; dup.innerHTML = svg(IC.copy, 17); dup.title = 'Duplica'; dup.onclick = () => duplicaNota(n);
     const del = document.createElement('button'); del.className = 'del'; del.innerHTML = svg(IC.trash, 17); del.title = 'Elimina'; del.onclick = () => eliminaNota(n);
-    az.append(edit, dup);
-    az.appendChild(inviaBtn(() => testoInviaNota(n), () => n.titolo || 'Nota'));
-    if (n.user_id === userId) az.appendChild(shareBtn('note', n, caricaNote));
-    az.appendChild(del);
+    // [CONDIVISI §2.2+P5.2] Proprietario: azioni piene. Destinatario: sola lettura + "Condiviso da" + rimuovi.
+    if (eMioWeb(n)) {
+      az.append(edit, dup);
+      az.appendChild(inviaBtn(() => testoInviaNota(n), () => n.titolo || 'Nota'));
+      az.appendChild(shareBtn('note', n, caricaNote));
+      az.appendChild(del);
+    } else {
+      az.appendChild(condivisoDaBadge('note', n));
+      az.appendChild(inviaBtn(() => testoInviaNota(n), () => n.titolo || 'Nota'));
+      az.appendChild(rimuoviDaMiaListaBtn('note', n, caricaNote));
+    }
     card.append(body, az);
     return card;
   }
@@ -2140,11 +2149,17 @@
 
     const acts = document.createElement('div'); acts.className = 'memo-det-acts';
     const mkIco = (icon, color, tip, fn) => { const b = document.createElement('button'); b.className = 'del'; b.style.color = color; b.innerHTML = svg(icon, 18); b.title = tip; b.setAttribute('data-tip', tip); b.onclick = fn; return b; };
-    acts.appendChild(mkIco(IC.pencil, 'var(--blue)', 'Modifica', () => { chiudi(); apriNotaForm(n); }));
-    acts.appendChild(mkIco(IC.copy, 'var(--blue)', 'Duplica', () => { chiudi(); duplicaNota(n); }));
-    acts.appendChild(inviaBtn(() => testoInviaNota(n), () => n.titolo || 'Nota'));
-    if (n.user_id === userId) acts.appendChild(shareBtn('note', n, caricaNote));
-    acts.appendChild(mkIco(IC.trash, 'var(--danger)', 'Elimina', () => { chiudi(); eliminaNota(n); }));
+    if (eMioWeb(n)) {
+      acts.appendChild(mkIco(IC.pencil, 'var(--blue)', 'Modifica', () => { chiudi(); apriNotaForm(n); }));
+      acts.appendChild(mkIco(IC.copy, 'var(--blue)', 'Duplica', () => { chiudi(); duplicaNota(n); }));
+      acts.appendChild(inviaBtn(() => testoInviaNota(n), () => n.titolo || 'Nota'));
+      acts.appendChild(shareBtn('note', n, caricaNote));
+      acts.appendChild(mkIco(IC.trash, 'var(--danger)', 'Elimina', () => { chiudi(); eliminaNota(n); }));
+    } else {
+      acts.appendChild(condivisoDaBadge('note', n));
+      acts.appendChild(inviaBtn(() => testoInviaNota(n), () => n.titolo || 'Nota'));
+      acts.appendChild(rimuoviDaMiaListaBtn('note', n, () => { chiudi(); caricaNote(); }));
+    }
     card.appendChild(acts);
 
     ov.appendChild(card);
@@ -3157,10 +3172,16 @@
     const edit = document.createElement('button'); edit.className = 'del'; edit.style.color = 'var(--blue)'; edit.innerHTML = svg(IC.pencil, 17); edit.title = 'Modifica'; edit.onclick = () => apriRicForm(r);
     const dup = document.createElement('button'); dup.className = 'del'; dup.style.color = 'var(--blue)'; dup.innerHTML = svg(IC.copy, 17); dup.title = 'Duplica'; dup.onclick = () => duplicaRicetta(r);
     const del = document.createElement('button'); del.className = 'del'; del.innerHTML = svg(IC.trash, 17); del.title = 'Elimina'; del.onclick = () => eliminaRicetta(r);
-    az.append(edit, dup);
-    az.appendChild(inviaBtn(() => testoInviaRicetta(r), () => r.nome || 'Ricetta'));
-    if (r.user_id === userId) az.appendChild(shareBtn('ricette', r, caricaRicette));
-    az.appendChild(del);
+    if (eMioWeb(r)) {
+      az.append(edit, dup);
+      az.appendChild(inviaBtn(() => testoInviaRicetta(r), () => r.nome || 'Ricetta'));
+      az.appendChild(shareBtn('ricette', r, caricaRicette));
+      az.appendChild(del);
+    } else {
+      az.appendChild(condivisoDaBadge('ricette', r));
+      az.appendChild(inviaBtn(() => testoInviaRicetta(r), () => r.nome || 'Ricetta'));
+      az.appendChild(rimuoviDaMiaListaBtn('ricette', r, caricaRicette));
+    }
     card.append(body, az);
     return card;
   }
@@ -3197,7 +3218,16 @@
     const dup = document.createElement('button'); dup.className = 'btn btn-ghost'; dup.style.cssText = 'width:auto;padding:10px 16px;'; dup.textContent = 'Duplica'; dup.onclick = () => duplicaRicetta(r);
     const del = document.createElement('button'); del.className = 'btn btn-ghost'; del.style.cssText = 'width:auto;padding:10px 16px;color:var(--danger);'; del.textContent = 'Elimina'; del.onclick = () => eliminaRicetta(r);
     const spesa = document.createElement('button'); spesa.className = 'btn'; spesa.style.cssText = 'width:auto;padding:10px 16px;background:#00BCD4;color:#fff;'; spesa.textContent = '🛒 Crea lista spesa'; spesa.onclick = () => creaListaSpesaDaRicetta(r);
-    az.append(edit, dup, spesa, del);
+    // [CONDIVISI §2.2+P5.2] Dettaglio ricetta: destinatario mantiene "Crea lista spesa" (azione personale) + rimozione.
+    if (eMioWeb(r)) {
+      az.append(edit, dup, spesa, del);
+    } else {
+      const rimuoviRic = document.createElement('button');
+      rimuoviRic.className = 'btn btn-ghost'; rimuoviRic.style.cssText = 'width:auto;padding:10px 16px;color:#E0A040;';
+      rimuoviRic.textContent = 'Rimuovi dalla mia lista';
+      rimuoviRic.onclick = () => abbandonaCondivisione('ricette', r, () => { ricSel = null; ricVista = 'lista'; renderRicettario(); caricaRicette(); });
+      az.append(spesa, rimuoviRic);
+    }
     root.appendChild(az);
   }
 
@@ -3922,6 +3952,7 @@
     $('user-email').textContent = user.email || '';
     $('login-view').classList.add('hidden');
     $('app-view').classList.remove('hidden');
+    await caricaMappaUtentiWeb();   // [CONDIVISI §2.2] rubrica nomi pronta prima di disegnare le liste
     switchModulo(moduloCorrente);
   }
 
@@ -4558,16 +4589,23 @@
     sposta.className = 'del'; sposta.style.color = '#7F77DD'; sposta.innerHTML = svg(IC.tag, 20); sposta.setAttribute('data-tip', 'Sposta');
     sposta.onclick = () => apriSpostaTask(t);
     div.append(chk, nome);
-    if (ordineTodo === 'data_inserimento' && !t.completato) {
-      const su = document.createElement('button'); su.className = 'del'; su.style.color = 'var(--muted)'; su.innerHTML = svg(IC.chevronUp, 16); su.setAttribute('data-tip', 'Sposta su');
-      su.onclick = () => spostaTask(t, -1);
-      const giu = document.createElement('button'); giu.className = 'del'; giu.style.color = 'var(--muted)'; giu.innerHTML = svg(IC.chevronDown, 16); giu.setAttribute('data-tip', 'Sposta giù');
-      giu.onclick = () => spostaTask(t, 1);
-      div.append(su, giu);
+    // [CONDIVISI §2.2+P5.2] Destinatario: niente riordino/modifica/elimina — solo badge, invio e rimozione dalla propria lista.
+    if (eMioWeb(t)) {
+      if (ordineTodo === 'data_inserimento' && !t.completato) {
+        const su = document.createElement('button'); su.className = 'del'; su.style.color = 'var(--muted)'; su.innerHTML = svg(IC.chevronUp, 16); su.setAttribute('data-tip', 'Sposta su');
+        su.onclick = () => spostaTask(t, -1);
+        const giu = document.createElement('button'); giu.className = 'del'; giu.style.color = 'var(--muted)'; giu.innerHTML = svg(IC.chevronDown, 16); giu.setAttribute('data-tip', 'Sposta giù');
+        giu.onclick = () => spostaTask(t, 1);
+        div.append(su, giu);
+      }
+      div.appendChild(shareBtn('todos', t, caricaTask));
+      div.appendChild(inviaBtn(() => testoInviaTodo(t), () => t.testo || 'Da fare'));
+      div.append(sposta, edit, del);
+    } else {
+      div.appendChild(condivisoDaBadge('todos', t));
+      div.appendChild(inviaBtn(() => testoInviaTodo(t), () => t.testo || 'Da fare'));
+      div.appendChild(rimuoviDaMiaListaBtn('todos', t, caricaTask));
     }
-    if (t.user_id === userId) div.appendChild(shareBtn('todos', t, caricaTask));
-    div.appendChild(inviaBtn(() => testoInviaTodo(t), () => t.testo || 'Da fare'));
-    div.append(sposta, edit, del);
   }
   function renderTaskEdit(div, t) {
     div.innerHTML = '';
@@ -4764,11 +4802,17 @@
     }
     const acts = document.createElement('div'); acts.className = 'memo-det-acts';
     const mkIco = (icon, color, tip, fn) => { const b = document.createElement('button'); b.className = 'del'; b.style.color = color; b.innerHTML = svg(icon, 18); b.title = tip; b.setAttribute('data-tip', tip); b.onclick = fn; return b; };
-    acts.appendChild(mkIco(IC.pencil, 'var(--blue)', 'Modifica', () => apriModificaMemo(m)));
-    acts.appendChild(mkIco(IC.tag, '#7F77DD', 'Sposta', () => apriSpostaMemo(m)));
-    acts.appendChild(inviaBtn(() => testoInviaMemo(m), () => m.testo || 'Memo'));
-    if (m.user_id === userId) acts.appendChild(shareBtn('todos_scadenza', m, caricaMemoItems));
-    acts.appendChild(mkIco(IC.trash, 'var(--danger)', 'Elimina', () => eliminaMemo(m.id)));
+    if (eMioWeb(m)) {
+      acts.appendChild(mkIco(IC.pencil, 'var(--blue)', 'Modifica', () => apriModificaMemo(m)));
+      acts.appendChild(mkIco(IC.tag, '#7F77DD', 'Sposta', () => apriSpostaMemo(m)));
+      acts.appendChild(inviaBtn(() => testoInviaMemo(m), () => m.testo || 'Memo'));
+      acts.appendChild(shareBtn('todos_scadenza', m, caricaMemoItems));
+      acts.appendChild(mkIco(IC.trash, 'var(--danger)', 'Elimina', () => eliminaMemo(m.id)));
+    } else {
+      acts.appendChild(condivisoDaBadge('todos_scadenza', m));
+      acts.appendChild(inviaBtn(() => testoInviaMemo(m), () => m.testo || 'Memo'));
+      acts.appendChild(rimuoviDaMiaListaBtn('todos_scadenza', m, caricaMemoItems));
+    }
     d.appendChild(acts);
   }
   function mostraMemoCategorie() {
@@ -5132,9 +5176,15 @@
     div.append(chk, mid);
     // Su schermo largo le azioni vivono nel Dettaglio: righe pulite.
     if (!memoWide()) {
-      div.appendChild(inviaBtn(() => testoInviaMemo(m), () => m.testo || 'Memo'));
-      if (m.user_id === userId) div.appendChild(shareBtn('todos_scadenza', m, caricaMemoItems));
-      div.append(spost, edit, del);
+      if (eMioWeb(m)) {
+        div.appendChild(inviaBtn(() => testoInviaMemo(m), () => m.testo || 'Memo'));
+        div.appendChild(shareBtn('todos_scadenza', m, caricaMemoItems));
+        div.append(spost, edit, del);
+      } else {
+        div.appendChild(condivisoDaBadge('todos_scadenza', m));
+        div.appendChild(inviaBtn(() => testoInviaMemo(m), () => m.testo || 'Memo'));
+        div.appendChild(rimuoviDaMiaListaBtn('todos_scadenza', m, caricaMemoItems));
+      }
     }
     return div;
   }
@@ -6064,8 +6114,14 @@
     del.className = 'del'; del.innerHTML = svg(IC.trash, 18); del.setAttribute('data-tip', 'Elimina');
     del.onclick = () => eliminaScad(s.id);
     div.append(chk, mid);
-    if (s.user_id === userId) div.appendChild(shareBtn('scadenze', s, caricaScadItems));
-    div.append(alleg, sposta, dup, edit, del);
+    // [CONDIVISI §2.2+P5.2] Le scadenze non hanno "invia": destinatario = badge + rimozione.
+    if (eMioWeb(s)) {
+      div.appendChild(shareBtn('scadenze', s, caricaScadItems));
+      div.append(alleg, sposta, dup, edit, del);
+    } else {
+      div.appendChild(condivisoDaBadge('scadenze', s));
+      div.appendChild(rimuoviDaMiaListaBtn('scadenze', s, caricaScadItems));
+    }
     return div;
   }
 
@@ -6869,9 +6925,16 @@
     del.className = 'del'; del.innerHTML = svg(IC.trash, 18); del.setAttribute('data-tip', 'Elimina');
     del.onclick = () => eliminaApp(a);
     div.append(mid);
-    if (a.user_id === userId) div.appendChild(shareBtn('appuntamenti', a, caricaAppuntamenti));
-    div.appendChild(inviaBtn(() => testoInviaApp(a), () => a.titolo || 'Appuntamento'));
-    div.append(alleg, edit, del);
+    // [CONDIVISI §2.2] Proprietario: condividi + modifica/allega/elimina. Destinatario: sola lettura + "Condiviso da".
+    if (eMioWeb(a)) {
+      div.appendChild(shareBtn('appuntamenti', a, caricaAppuntamenti));
+      div.appendChild(inviaBtn(() => testoInviaApp(a), () => a.titolo || 'Appuntamento'));
+      div.append(alleg, edit, del);
+    } else {
+      div.appendChild(condivisoDaBadge('appuntamenti', a));
+      div.appendChild(inviaBtn(() => testoInviaApp(a), () => a.titolo || 'Appuntamento'));
+      div.appendChild(rimuoviDaMiaListaBtn('appuntamenti', a, caricaAppuntamenti));
+    }
     return div;
   }
 
@@ -7030,6 +7093,80 @@
       return img;
     }
     const av = document.createElement('span'); av.className = 'avatar-circle'; av.textContent = iniz; return av;
+  }
+  // [CONDIVISI §2.2] Costruisce la rubrica nomi dai record 'condivisioni' che vedo
+  // (proprietari creato_da + destinatari user_id), risolvendo via utenti_pubblici.
+  async function caricaMappaUtentiWeb() {
+    try {
+      const { data: cond } = await sb.from('condivisioni').select('creato_da, user_id');
+      const ids = new Set();
+      (cond || []).forEach(c => { if (c.creato_da) ids.add(c.creato_da); if (c.user_id) ids.add(c.user_id); });
+      ids.delete(userId);
+      if (!ids.size) return;
+      const { data: utenti } = await sb.from('utenti_pubblici').select('id, email, raw_user_meta_data').in('id', [...ids]);
+      (utenti || []).forEach(u => {
+        const meta = u.raw_user_meta_data || {};
+        mappaUtentiWeb[u.id] = meta.nickname || u.email || u.id;
+      });
+    } catch (e) { console.log('[Condivisione web] mappa error:', e); }
+  }
+  // [CONDIVISI §2.2] true = elemento mio (o senza proprietario); false = condiviso con me.
+  function eMioWeb(item) { return !item || !item.user_id || item.user_id === userId; }
+  function nomeProprietarioWeb(item) { return (item && item.user_id && mappaUtentiWeb[item.user_id]) || "un'altra persona"; }
+  // [CONDIVISI §2.2] Targhetta ambra "Condiviso da <nome>" per il destinatario (click = chi altro lo vede).
+  function condivisoDaBadge(tabella, item) {
+    const b = document.createElement('button');
+    b.className = 'del';
+    b.style.cssText = 'display:inline-flex; align-items:center; gap:4px; color:#E0A040; font-size:12px; font-weight:700; border:1px solid #C8892A; border-radius:8px; padding:3px 8px; white-space:nowrap;';
+    b.innerHTML = svg(IC.users, 14) + '<span>Condiviso da ' + escapeHtml(nomeProprietarioWeb(item)) + '</span>';
+    b.setAttribute('data-tip', 'Chi altro lo vede');
+    b.onclick = () => mostraInfoCondivisione(tabella, item);
+    return b;
+  }
+  // [CONDIVISI P5.2] Il destinatario abbandona: cancella SOLO la propria riga in 'condivisioni'.
+  // Non tocca l'elemento originale. Dopo, l'elemento sparisce dalla sua lista (RLS) e i suoi
+  // promemoria locali non vengono più riprogrammati.
+  async function abbandonaCondivisione(tabella, item, onDone) {
+    const ok = await confermaPopup(
+      'Vuoi rimuovere "' + (item.titolo || 'questo elemento') + '" dalla tua lista?\nNon lo vedrai più e non riceverai i suoi promemoria. L\'elemento resta a chi l\'ha creato.',
+      { titolo: 'Rimuovi dalla mia lista', ok: 'Rimuovi', annulla: 'Annulla', pericolo: true }
+    );
+    if (!ok) return;
+    try {
+      const { error } = await sb.from('condivisioni').delete()
+        .eq('tabella', tabella).eq('elemento_id', String(item.id)).eq('user_id', userId);
+      if (error) throw error;
+      if (onDone) onDone();
+    } catch (e) {
+      await confermaPopup('Non è stato possibile rimuoverlo: ' + (e.message || e), { titolo: 'Errore', ok: 'OK', annulla: 'OK' });
+    }
+  }
+  // [CONDIVISI P5.2] Pulsante "Rimuovi dalla mia lista" per il destinatario (icona x, ambra).
+  function rimuoviDaMiaListaBtn(tabella, item, onDone) {
+    const b = document.createElement('button');
+    b.className = 'del'; b.style.cssText = 'color:#E0A040;';
+    b.innerHTML = svg(IC.x, 17);
+    b.setAttribute('data-tip', 'Rimuovi dalla mia lista');
+    b.onclick = () => abbandonaCondivisione(tabella, item, onDone);
+    return b;
+  }
+  // [CONDIVISI §2.2] Popup info: chi me l'ha condiviso + chi altro lo vede.
+  async function mostraInfoCondivisione(tabella, item) {
+    const proprietario = nomeProprietarioWeb(item);
+    let altri = [];
+    try {
+      const { data } = await sb.from('condivisioni').select('user_id').eq('tabella', tabella).eq('elemento_id', String(item.id));
+      const ids = (data || []).map(c => c.user_id).filter(id => id && id !== userId && id !== item.user_id);
+      if (ids.length) {
+        const { data: utenti } = await sb.from('utenti_pubblici').select('id, email, raw_user_meta_data').in('id', ids);
+        altri = ids.map(id => {
+          const u = (utenti || []).find(x => x.id === id);
+          return (u && ((u.raw_user_meta_data && u.raw_user_meta_data.nickname) || u.email)) || mappaUtentiWeb[id] || "un'altra persona";
+        });
+      }
+    } catch (e) { console.log('[Condivisione web] info error:', e); }
+    const msg = altri.length ? ('Lo vedono anche: ' + altri.join(', ') + '.') : 'Nessun altro lo vede, al momento.';
+    await confermaPopup(msg, { titolo: '👤 Condiviso da ' + proprietario, ok: 'Chiudi', annulla: 'Chiudi' });
   }
   let shareCtx = null;
   async function apriCondivisione(tabella, item, onDone) {
