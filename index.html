@@ -133,10 +133,16 @@
   .modal-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
   .modal-head h3 { margin:0; font-size:17px; }
   /* [POPUP SCAD] più largo e con più aria tra i campi */
-  #scad-modal .modal-card { max-width:640px; padding:22px; }
-  #scad-modal .modal-head { margin-bottom:14px; }
-  #scad-modal .memo-form { display:flex; flex-direction:column; gap:16px; }
+  #scad-modal .modal-card { max-width:640px; padding:16px 18px; max-height:92vh; }
+  #scad-modal .modal-head { margin-bottom:8px; }
+  #scad-modal .memo-form { display:flex; flex-direction:column; gap:9px; }
   #scad-modal .memo-form .field { margin-bottom:0; }
+  /* [COMPATTAZIONE POPUP SCADENZE] misure/font ridotti così il modale ci sta senza barra di scorrimento su schermi normali (fallback: max-height 92vh) */
+  #scad-modal .modal-head h3 { font-size:16px; }
+  #scad-modal .field { padding:9px 12px; font-size:14px; }
+  #scad-modal .btn { padding:10px 14px; }
+  #scad-modal #scad-promem-sez { padding:9px 12px !important; }
+  #scad-modal #scad-promem-sez > div:first-child { margin-bottom:6px !important; }
   /* [FORM MEMO] stessa aria tra i campi del popup scadenze */
   #memo-form-view .memo-form { display:flex; flex-direction:column; gap:16px; }
   #memo-form-view .memo-form .field { margin-bottom:0; }
