@@ -5868,6 +5868,7 @@
     aggiornaVisibilitaRipScad();
     scadSottoattivita = []; renderScadSottoattivita();
     scadInModificaObj = null;
+    scadFormAllegatiPending = []; renderScadFormAllegati();
     $('scad-salva').textContent = 'Aggiungi scadenza';
     $('scad-annulla-edit').classList.add('hidden');
     // [PROMEMORIA SCAD] azzera il selettore promemoria
@@ -5896,6 +5897,59 @@
       wrap.appendChild(rm);
       cont.appendChild(wrap);
     });
+  }
+  // [ALLEGATI SCAD · FORM] allegati "in sospeso" scelti nella NUOVA scadenza:
+  // vengono caricati/collegati SOLO al salvataggio (così non restano file scollegati se non salvi).
+  let scadFormAllegatiPending = [];
+  function renderScadFormAllegati() {
+    const cont = $('scad-modal-alleg'); if (!cont) return;
+    cont.innerHTML = '';
+    if (!scadFormAllegatiPending.length) { cont.innerHTML = '<span class="muted" style="font-size:12px;">Nessun documento collegato.</span>'; return; }
+    scadFormAllegatiPending.forEach((item, i) => {
+      const wrap = document.createElement('span'); wrap.style.cssText = 'display:inline-flex; align-items:center; margin:0 6px 6px 0;';
+      const chip = document.createElement('span'); chip.className = 'btn btn-ghost';
+      chip.style.cssText = 'width:auto; padding:5px 10px; font-size:12px; display:inline-flex; align-items:center; gap:6px; cursor:default;';
+      chip.innerHTML = '<span style="color:#4f9deb; display:inline-flex;">' + svg(item.tipo === 'pdf' ? IC.fileText : IC.photo, 15) + '</span>' + escapeHtml(item.nome || 'File');
+      const rm = document.createElement('button'); rm.type = 'button'; rm.className = 'del'; rm.style.cssText = 'padding:2px 4px;'; rm.title = 'Togli'; rm.innerHTML = svg(IC.x, 14);
+      rm.onclick = () => { scadFormAllegatiPending.splice(i, 1); renderScadFormAllegati(); };
+      wrap.append(chip, rm); cont.appendChild(wrap);
+    });
+  }
+  // [ALLEGATI SCAD · FORM] apre il file picker in modalità buffer (aggiunge agli allegati in sospeso).
+  function allegaScadFormPicker() {
+    const inp = document.createElement('input');
+    inp.type = 'file'; inp.accept = 'image/*,application/pdf'; inp.style.display = 'none';
+    inp.onchange = () => {
+      const f = inp.files && inp.files[0];
+      if (f) {
+        const isPdf = f.type === 'application/pdf' || /\.pdf$/i.test(f.name || '');
+        scadFormAllegatiPending.push({ file: f, nome: f.name, tipo: isPdf ? 'pdf' : 'immagine' });
+        renderScadFormAllegati();
+      }
+      inp.remove();
+    };
+    document.body.appendChild(inp);
+    inp.click();
+  }
+  // [ALLEGATI SCAD · FORM] carica/collega gli allegati in sospeso alla scadenza appena creata.
+  async function flushScadFormAllegati(clientId) {
+    if (!clientId || !scadFormAllegatiPending.length) return;
+    const items = scadFormAllegatiPending.slice();
+    for (const item of items) {
+      try {
+        const file = item.file;
+        const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name || '');
+        const tipo = isPdf ? 'pdf' : 'immagine';
+        const ext = ((file.name || '').split('.').pop() || (isPdf ? 'pdf' : 'jpg')).toLowerCase();
+        const docId = uuid();
+        const path = userId + '/' + docId + '.' + ext;
+        const { error: upErr } = await sb.storage.from(DOC_BUCKET).upload(path, file, { contentType: file.type || (isPdf ? 'application/pdf' : 'image/jpeg'), upsert: true });
+        if (upErr) { homeToast('Errore caricamento allegato: ' + upErr.message); continue; }
+        const titolo = (file.name || 'Allegato').replace(/\.[^.]+$/, '');
+        await sb.from('documenti').insert([{ client_id: docId, titolo, tipo_file: tipo, nome_file: file.name || null, storage_path: path, categoria: null, condiviso: false, user_id: userId, collegato_tipo: 'scadenza', collegato_client_id: clientId }]);
+      } catch (e) { console.log('[allegati scad] flush errore', e); }
+    }
+    scadFormAllegatiPending = [];
   }
   function renderScadSottoattivita() {
     const cont = $('scad-sub-list'); if (!cont) return;
@@ -6170,13 +6224,15 @@
     } else {
       const catId = $('scad-dest-cat').value, subId = $('scad-dest-sub').value;
       if (!titolo || !catId || !subId) { homeToast('Servono titolo, categoria e sottocategoria'); return; }
+      const cidNuova = uuid();
       const { error } = await sb.from('scadenze').insert([{
-        client_id: uuid(), titolo, data, ora, nota, completata: false,
+        client_id: cidNuova, titolo, data, ora, nota, completata: false,
         anticipo: prom.anticipo, datanotifica: prom.datanotifica, oranotifica: prom.oranotifica, sottoattivita: scadSottoattivita, allegati: [],
         categoria: catId, sottocategoria: subId,
         genitore_client_id: null, occorrenza_numero: 1, user_id: userId, ...rip
       }]);
       if (error) { homeToast('Errore aggiunta scadenza: ' + error.message); return; }
+      await flushScadFormAllegati(cidNuova);   // [ALLEGATI SCAD · FORM] carica gli allegati scelti e li aggancia alla nuova scadenza
       resetScadForm(); chiudiScadModal();
       await vaiADestinazioneScad(catId, subId);   // mostra la destinazione con la nuova scadenza
     }
@@ -6214,8 +6270,8 @@
   function apriScadModal(modifica) {
     $('scad-modal-titolo').textContent = modifica ? 'Modifica scadenza' : 'Nuova scadenza';
     $('scad-dest-row').classList.toggle('hidden', !!modifica);   // la destinazione si sceglie solo per una NUOVA scadenza
-    $('scad-modal-alleg-row').classList.toggle('hidden', !modifica);   // gli allegati nel popup solo in modifica
-    if (modifica) renderScadModalAllegati();
+    $('scad-modal-alleg-row').classList.remove('hidden');   // allegati disponibili sia in nuova sia in modifica
+    if (modifica) renderScadModalAllegati(); else renderScadFormAllegati();
     $('scad-modal').classList.remove('hidden');
     setTimeout(() => { const t = $('scad-titolo'); if (t) t.focus(); }, 50);
   }
@@ -7471,7 +7527,7 @@
   $('scad-sub-add').onclick = aggiungiScadSottoattivita;
   $('scad-sub-input').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); aggiungiScadSottoattivita(); } });
   creaDettaturaCampo('scad-sub-input', 'scad-mic-sotto');
-  $('scad-modal-alleg-add').onclick = () => { if (scadInModificaObj) allegaAScadPicker(scadInModificaObj); };
+  $('scad-modal-alleg-add').onclick = () => { if (scadInModificaObj) allegaAScadPicker(scadInModificaObj); else allegaScadFormPicker(); };
   $('app-refresh').onclick = caricaAppuntamenti;
   $('app-form-alleg').onclick = () => allegaAppFormPicker();
   $('app-salva').onclick = salvaApp;
