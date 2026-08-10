@@ -43,8 +43,8 @@
   /* [P4.2] Colore per sezione: ogni modulo definisce il suo --accent (colori identici
      all'app). Le classi condivise qui sopra ripiegano sul verde quando --accent non è
      impostato (login, home, profilo, Spesa), così quelle aree restano invariate. */
-  #mod-dafare       { --accent:#5DCAA5; }
-  #mod-memo         { --accent:#EF9F27; }
+  #mod-dafare       { --accent:#E4D93C; }
+  #mod-memo         { --accent:#27AE60; }
   #mod-appuntamenti { --accent:#378ADD; }
   #mod-scadenze     { --accent:#EF9F27; }
   #mod-note         { --accent:#7F77DD; }
@@ -1343,8 +1343,8 @@
   // ====== HOME (riepilogo + accesso rapido alle sezioni, come nell'app) ======
   let homeClockTimer = null;
   const SEZIONI_HOME = [
-    { key: 'dafare',       titolo: 'Da fare',      sub: 'Cose da fare',             icona: 'circle-check',    colore: '#5DCAA5', wired: true },
-    { key: 'memo',         titolo: 'Memo',         sub: 'I tuoi promemoria',        icona: 'bell',            colore: '#EF9F27', wired: true },
+    { key: 'dafare',       titolo: 'Da fare',      sub: 'Cose da fare',             icona: 'circle-check',    colore: '#E4D93C', wired: true },
+    { key: 'memo',         titolo: 'Memo',         sub: 'I tuoi promemoria',        icona: 'bell',            colore: '#27AE60', wired: true },
     { key: 'appuntamenti', titolo: 'Appuntamenti', sub: 'I tuoi appuntamenti',      icona: 'calendar-event',  colore: '#378ADD', wired: true },
     { key: 'scadenze',     titolo: 'Scadenze',     sub: 'Scadenze importanti',      icona: 'alarm',           colore: '#EF9F27', wired: true },
     { key: 'note',         titolo: 'Note',         sub: 'Le tue note e appunti',    icona: 'bulb',            colore: '#7F77DD', wired: true },
@@ -1509,7 +1509,7 @@
       scadenze: scad.filter(s => !s.completata).length,
     });
 
-    const memoOggi = memo.filter(m => m.data === oggi).map(m => ({ testo: m.testo, ora: m.ora, colore: '#EF9F27', etichetta: 'Memo', key: 'memo', id: m.id, categoria: m.categoria, fatto: !!m.completato }));
+    const memoOggi = memo.filter(m => m.data === oggi).map(m => ({ testo: m.testo, ora: m.ora, colore: '#27AE60', etichetta: 'Memo', key: 'memo', id: m.id, categoria: m.categoria, fatto: !!m.completato }));
     const scadOggi = scad.filter(s => s.data === oggi).map(s => ({ testo: s.titolo, ora: s.ora, colore: '#EF9F27', etichetta: 'Scadenza', key: 'scadenze', id: s.id, categoria: s.categoria, sottocategoria: s.sottocategoria, fatto: !!s.completata }));
     const appOggiItems = appOggi.map(a => ({ testo: a.titolo, ora: a.ora, colore: '#378ADD', etichetta: 'Appuntamento', key: 'appuntamenti', id: a.id, fatto: false }));
     const itemsOggi = [...scadOggi, ...appOggiItems, ...memoOggi].sort((a, b) => { if (!!a.fatto !== !!b.fatto) return a.fatto ? 1 : -1; return (a.ora || '').localeCompare(b.ora || ''); });
@@ -1550,7 +1550,7 @@
       ]);
       if (!oggiBox.isConnected) return;
       const memo = (mRes && mRes.data) || [], scad = (sRes && sRes.data) || [], app = (aRes && aRes.data) || [];
-      const memoOggi = memo.filter(m => m.data === oggi).map(m => ({ testo: m.testo, ora: m.ora, colore: '#EF9F27', etichetta: 'Memo', key: 'memo', id: m.id, categoria: m.categoria, fatto: !!m.completato }));
+      const memoOggi = memo.filter(m => m.data === oggi).map(m => ({ testo: m.testo, ora: m.ora, colore: '#27AE60', etichetta: 'Memo', key: 'memo', id: m.id, categoria: m.categoria, fatto: !!m.completato }));
       const scadOggi = scad.filter(s => s.data === oggi).map(s => ({ testo: s.titolo, ora: s.ora, colore: '#EF9F27', etichetta: 'Scadenza', key: 'scadenze', id: s.id, categoria: s.categoria, sottocategoria: s.sottocategoria, fatto: !!s.completata }));
       const appOggiItems = app.filter(a => a.data === oggi).map(a => ({ testo: a.titolo, ora: a.ora, colore: '#378ADD', etichetta: 'Appuntamento', key: 'appuntamenti', id: a.id, fatto: false }));
       // da fare in cima, fatti (barrati) in fondo; a parità, per orario
@@ -2398,7 +2398,7 @@
     memo:         { label: 'Memo',         colore: '#78909C', icona: 'bell' },
     appuntamento: { label: 'Appuntamenti', colore: '#2196F3', icona: 'calendar-event' },
     scadenza:     { label: 'Scadenze',     colore: '#FF9800', icona: 'alarm' },
-    todo:         { label: 'Da fare',      colore: '#5DCAA5', icona: 'circle-check' },
+    todo:         { label: 'Da fare',      colore: '#E4D93C', icona: 'circle-check' },
     note:         { label: 'Note',         colore: '#7F77DD', icona: 'bulb' },
     lista_spesa:  { label: 'Lista spesa',  colore: '#1D9E75', icona: 'shopping-cart' },
   };
