@@ -6798,6 +6798,9 @@
     return m === 0 ? (h + ' h') : (h + ' h ' + m + ' min');
   }
 
+  // [GPS] Oltre 90 minuti dalla partenza si passa alla forma ferma (orario, grigio).
+  const SOGLIA_COUNTDOWN_MIN_WEB = 90;
+
   // Porting fedele di calcolaBadge (lib/urgenza.ts): 4 stati.
   function calcolaBadgeWeb(appMs, durataSec, adessoMs) {
     const durataMin = Math.round(durataSec / 60);
@@ -6807,7 +6810,18 @@
     if (minutiAllaPartenza <= 0) colore = 'ritardo';
     else if (minutiAllaPartenza <= 10) colore = 'rosso';
     else if (minutiAllaPartenza <= 30) colore = 'ambra';
-    return { colore, durataMin, partiEntroMs, minutiAllaPartenza, lampeggia: colore === 'rosso' };
+    // [GPS] Oltre la soglia il conto alla rovescia non serve: mancano ore, non minuti,
+    // e la domanda non e' piu' "devo uscire adesso?" ma "a che ora metto la sveglia?".
+    // Chi disegna usa "anticipato" per mostrare l'orario fermo invece dei minuti.
+    // Stessa soglia dell'app (lib/urgenza.ts) e del server (push-partenza).
+    return { colore, durataMin, partiEntroMs, minutiAllaPartenza, lampeggia: colore === 'rosso',
+             anticipato: minutiAllaPartenza > SOGLIA_COUNTDOWN_MIN_WEB };
+  }
+
+  // "10:46" da un timestamp.
+  function oraHhmmWeb(ms) {
+    const d = new Date(ms);
+    return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
   }
 
   // Chiama la Edge Function travel-time (la stessa dell'app), dal client web.
@@ -6901,7 +6915,7 @@
     const appMs = appuntamentoMsWeb(a);
     if (appMs == null) return null;
     const b = calcolaBadgeWeb(appMs, durataSec, Date.now());
-    const pal = GPS_PAL[b.colore];
+    const pal = GPS_PAL[b.anticipato ? 'ritardo' : b.colore];   // [GPS] lontano = grigio, non verde acceso
 
     const box = document.createElement('div');
     box.style.cssText = 'margin-top:8px; display:inline-flex; flex-direction:column; gap:6px; background:' + pal.bg + '; border:1px solid ' + pal.bd + '; border-radius:10px; padding:8px 11px;' + (b.lampeggia ? ' animation:gpsBlink 1s ease-in-out infinite;' : '');
@@ -6910,7 +6924,8 @@
     let testo;
     if (b.colore === 'ritardo') testo = 'Sei in ritardo · ti servono ~' + formattaDurataWeb(b.durataMin);
     else if (b.colore === 'rosso') testo = 'È ora di partire · ~' + formattaDurataWeb(b.durataMin) + ' di viaggio';
-    else testo = 'Parti tra ' + b.minutiAllaPartenza + ' min · ~' + formattaDurataWeb(b.durataMin) + ' di viaggio';
+    else if (b.colore === 'ambra') testo = 'Parti tra ' + b.minutiAllaPartenza + ' min · ~' + formattaDurataWeb(b.durataMin) + ' di viaggio';
+    else testo = 'Parti entro le ' + oraHhmmWeb(b.partiEntroMs) + ' · ~' + formattaDurataWeb(b.durataMin) + ' di viaggio';
 
     const riga = document.createElement('div');
     riga.style.cssText = 'display:inline-flex; align-items:center; gap:7px; font-size:13px; font-weight:600; color:' + pal.tx + ';';
@@ -7084,7 +7099,7 @@
     const appMs = appuntamentoMsWeb(a);
     if (appMs == null) return null;
     const b = calcolaBadgeWeb(appMs, durataSec, Date.now());
-    const pal = GPS_PAL[b.colore];
+    const pal = GPS_PAL[b.anticipato ? 'ritardo' : b.colore];   // [GPS] lontano = grigio, non verde acceso
 
     const wrap = document.createElement('span');
     wrap.className = 'home-oggi-gps';
@@ -7093,7 +7108,8 @@
     let testo;
     if (b.colore === 'ritardo') testo = 'In ritardo';
     else if (b.colore === 'rosso') testo = 'È ora di partire';
-    else testo = 'Parti tra ' + b.minutiAllaPartenza + ' min';
+    else if (b.colore === 'ambra') testo = 'Parti tra ' + b.minutiAllaPartenza + ' min';
+    else testo = 'Parti entro le ' + oraHhmmWeb(b.partiEntroMs);
 
     const pil = document.createElement('span');
     pil.className = 'home-oggi-pil';
