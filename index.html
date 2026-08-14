@@ -180,6 +180,15 @@
   .home-oggi-ora { color:#e6e6e6; font-size:14px; font-weight:600; min-width:44px; }
   .home-oggi-testo { flex:1; color:#fff; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .home-oggi-tag { color:var(--muted); font-size:10px; letter-spacing:.3px; }
+  .home-domani-titolo { display:flex; align-items:center; gap:8px; font-size:13px; font-weight:700; color:var(--muted); letter-spacing:.5px; margin:14px 0 8px; }
+  .home-domani-titolo::after { content:''; flex:1; height:1px; background:#243052; }
+  .app-sep-conclusi { display:flex; align-items:center; gap:10px; margin:16px 0 8px; color:#7b8aa8; font-size:12px; font-weight:700; letter-spacing:.6px; text-transform:uppercase; }
+  .app-sep-conclusi::after { content:''; flex:1; height:1px; background:#24304e; }
+  .home-oggi-gps { display:inline-flex; align-items:center; gap:8px; flex:none; }
+  .home-oggi-pil { display:inline-flex; align-items:center; gap:5px; border-radius:999px; padding:3px 9px; font-size:11.5px; font-weight:600; white-space:nowrap; }
+  .home-oggi-pil svg { flex:none; }
+  .home-oggi-pil .sec { opacity:.72; font-weight:500; }
+  .home-oggi-pil-btn { background:rgba(74,144,226,0.16); border:1px solid rgba(74,144,226,0.55); color:#9cc4f2; border-radius:8px; padding:3px 10px; font-size:11.5px; cursor:pointer; font-family:inherit; white-space:nowrap; }
   .home-oggi-item.fatto { opacity:0.55; }
   .home-oggi-item.fatto .home-oggi-testo { text-decoration:line-through; }
   /* Evidenza "scaduta" (rosso + leggero lampeggio) come nell'app */
@@ -402,6 +411,19 @@
   .doc-card .nota-azioni .del { background:none; border:none; cursor:pointer; display:inline-flex; padding:6px; border-radius:8px; color:var(--danger); }
   .doc-card .nota-azioni .del:hover { background:#242744; }
 </style>
+  <style>
+    /* [GPS] lampeggio badge "e' ora di partire" */
+    @keyframes gpsBlink { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
+    .gps-orig-btn { flex:1; display:inline-flex; flex-direction:column; align-items:center; gap:4px; padding:9px 6px; border-radius:11px; background:#0f3460; border:1px solid #2a2a4e; color:#cdd8ee; font-size:12px; font-weight:600; cursor:pointer; line-height:1.2; }
+    .gps-orig-btn svg { color:#9fb2d4; }
+    .gps-orig-btn.sel { background:#12305a; border-color:#4f9deb; color:#dbeafe; }
+    .gps-orig-btn.sel svg { color:#dbeafe; }
+    .gps-mezzo-btn { flex:1; display:inline-flex; align-items:center; justify-content:center; padding:10px 4px; border-radius:10px; background:#0f3460; border:1px solid #2a2a4e; color:#cdd8ee; cursor:pointer; }
+    .gps-mezzo-btn svg { color:#9fb2d4; }
+    .gps-mezzo-btn.sel { background:#12305a; border-color:#4f9deb; color:#dbeafe; }
+    .gps-mezzo-btn.sel svg { color:#dbeafe; }
+    .gps-mezzo-nota { font-size:10.5px; color:#7b8aa8; margin-top:6px; line-height:1.35; }
+  </style>
 </head>
 <body>
 
@@ -935,6 +957,32 @@
           <input id="app-luogo" class="field" placeholder="Luogo (facoltativo)…" autocomplete="off" style="margin:0;" />
           <div id="app-luogo-sugg" style="display:none; position:absolute; left:0; right:0; top:calc(100% + 3px); z-index:60; background:var(--card); border:1px solid #274a7d; border-radius:10px; overflow:hidden; box-shadow:0 10px 26px rgba(0,0,0,.5);"></div>
         </div>
+        <div style="margin-bottom:12px;">
+          <div style="font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; margin-bottom:8px;">Verifica percorrenza — come ti sposti</div>
+          <div style="display:flex; gap:6px; margin-bottom:10px;">
+            <button id="app-mezzo-driving" type="button" title="Auto" aria-label="Auto" class="gps-mezzo-btn sel"><svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M17 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M5 17h-2v-6l2 -5h9l4 5h1a2 2 0 0 1 2 2v4h-2m-4 0h-6m-6 -6h15m-6 0v-5" /></svg></button>
+            <button id="app-mezzo-walking" type="button" title="A piedi" aria-label="A piedi" class="gps-mezzo-btn"><svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 4m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" /><path d="M7 21l3 -4" /><path d="M16 21l-2 -4l-3 -3l1 -6" /><path d="M6 12l2 -3l4 -1l3 3l3 1" /></svg></button>
+            <button id="app-mezzo-bicycling" type="button" title="Bici" aria-label="Bici" class="gps-mezzo-btn"><svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 18m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0" /><path d="M19 18m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0" /><path d="M12 19l0 -4l-3 -3l5 -4l2 3l3 0" /><path d="M17 5m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" /></svg></button>
+            <button id="app-mezzo-transit" type="button" title="Mezzi" aria-label="Mezzi" class="gps-mezzo-btn"><svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17m0 1a1 1 0 0 1 1 -1h14a1 1 0 0 1 1 1v0a1 1 0 0 1 -1 1h-14a1 1 0 0 1 -1 -1z" /><path d="M4 5m0 1a1 1 0 0 1 1 -1h14a1 1 0 0 1 1 1v9a1 1 0 0 1 -1 1h-14a1 1 0 0 1 -1 -1z" /><path d="M4 10h16" /><path d="M8 19l-1 2" /><path d="M16 19l1 2" /></svg></button>
+          </div>
+          <div id="app-mezzo-nota" class="gps-mezzo-nota" style="display:none;">Gli orari dei mezzi pubblici li fornisce Google e dipendono dalla zona: se per questo tragitto non li ha, te lo diciamo subito.</div>
+          <div style="font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; margin-bottom:8px;">Scegli da dove parti</div>
+          <div style="display:flex; gap:8px;">
+            <button id="app-gps-btn-base" type="button" class="gps-orig-btn"><svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l-2 0l9 -9l9 9l-2 0" /><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7" /><path d="M9 21v-6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6" /></svg><span>Base</span></button>
+            <button id="app-gps-btn-prec" type="button" class="gps-orig-btn"><svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 13l-4 -4l4 -4" /><path d="M5 9h11a4 4 0 0 1 0 8h-1" /></svg><span>Appto prec.</span></button>
+            <button id="app-gps-btn-digita" type="button" class="gps-orig-btn"><svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0 -14 0" /><path d="M21 21l-6 -6" /></svg><span>Cerca/digita</span></button>
+          </div>
+          <div id="app-parti-da-wrap" style="position:relative; margin-top:8px; display:none;">
+            <div style="display:flex; gap:8px; align-items:flex-start;">
+              <div style="position:relative; flex:1;">
+                <input id="app-parti-da" class="field" placeholder="Cerca o digita il punto di partenza…" autocomplete="off" style="margin:0;" />
+                <div id="app-parti-da-sugg" style="display:none; position:absolute; left:0; right:0; top:calc(100% + 3px); z-index:60; background:var(--card); border:1px solid #274a7d; border-radius:10px; overflow:hidden; box-shadow:0 10px 26px rgba(0,0,0,.5);"></div>
+              </div>
+              <button id="app-gps-digita-conferma" type="button" style="flex-shrink:0; background:#4f9deb; color:#fff; border:none; border-radius:10px; padding:12px 16px; font-size:13px; font-weight:600; cursor:pointer;">Conferma</button>
+            </div>
+          </div>
+          <div id="app-gps-verifica-out" style="font-size:12px; color:#8aa0c8; margin-top:8px;"></div>
+        </div>
         <input id="app-note" class="field" placeholder="Note (facoltative)…" />
         <!-- PROMEMORIA (multipli, come l'app) -->
         <div id="app-promem-sez" style="background:#111a30; border:1px solid #26305a; border-radius:12px; padding:12px 14px; margin-bottom:12px;">
@@ -1362,6 +1410,11 @@
   ];
   const GIORNI_IT = ['domenica', 'lunedì', 'martedì', 'mercoledì', 'giovedì', 'venerdì', 'sabato'];
   function oggiGGMMAAAA() { const d = new Date(); return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear(); }
+  function domaniGGMMAAAA() { const d = new Date(Date.now() + 86400000); return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear(); }
+  // La sezione "Domani" in Home compare dal pomeriggio: la mattina serve la giornata di oggi,
+  // dal pomeriggio in poi si comincia a pensare a domani (sveglia, primo treno...).
+  const ORA_MOSTRA_DOMANI = 14;
+  function eOraDiMostrareDomani() { return new Date().getHours() >= ORA_MOSTRA_DOMANI; }
   function dataEstesaIT() { const d = new Date(); const s = GIORNI_IT[d.getDay()] + ' ' + d.getDate() + ' ' + (MESI_IT[d.getMonth()] || '') + ' ' + d.getFullYear(); return s.charAt(0).toUpperCase() + s.slice(1); }
   function homeToast(msg) {
     let t = document.getElementById('home-toast');
@@ -1499,7 +1552,7 @@
         sb.from('todos').select('id, completato'),
         sb.from('todos_scadenza').select('id, testo, data, ora, completato, categoria'),
         sb.from('scadenze').select('id, titolo, data, ora, completata, categoria, sottocategoria'),
-        sb.from('appuntamenti').select('id, titolo, data, ora'),
+        sb.from('appuntamenti').select('id, client_id, titolo, data, ora, ora_fine, luogo, partito_at, mezzo'),   // [GPS] servono al badge di partenza
         sb.from('liste_spesa').select('id'),
       ]);
     } catch (e) { return; }
@@ -1517,9 +1570,16 @@
 
     const memoOggi = memo.filter(m => m.data === oggi).map(m => ({ testo: m.testo, ora: m.ora, colore: '#27AE60', etichetta: 'Memo', key: 'memo', id: m.id, categoria: m.categoria, fatto: !!m.completato }));
     const scadOggi = scad.filter(s => s.data === oggi).map(s => ({ testo: s.titolo, ora: s.ora, colore: '#EF9F27', etichetta: 'Scadenza', key: 'scadenze', id: s.id, categoria: s.categoria, sottocategoria: s.sottocategoria, fatto: !!s.completata }));
-    const appOggiItems = appOggi.map(a => ({ testo: a.titolo, ora: a.ora, colore: '#378ADD', etichetta: 'Appuntamento', key: 'appuntamenti', id: a.id, fatto: false }));
+    const appOggiItems = appOggi.map(a => ({ testo: a.titolo, ora: a.ora, colore: '#378ADD', etichetta: 'Appuntamento', key: 'appuntamenti', id: a.id, fatto: false, app: a }));   // [GPS] app = riga grezza per il badge
     const itemsOggi = [...scadOggi, ...appOggiItems, ...memoOggi].sort((a, b) => { if (!!a.fatto !== !!b.fatto) return a.fatto ? 1 : -1; return (a.ora || '').localeCompare(b.ora || ''); });
-    renderOggiPerTe(oggiBox, itemsOggi);
+    const domP = domaniGGMMAAAA();
+    const itemsDomaniP = [
+      ...scad.filter(s => s.data === domP).map(s => ({ testo: s.titolo, ora: s.ora, colore: '#EF9F27', etichetta: 'Scadenza', key: 'scadenze', id: s.id, categoria: s.categoria, sottocategoria: s.sottocategoria, fatto: !!s.completata })),
+      ...app.filter(a => a.data === domP).map(a => ({ testo: a.titolo, ora: a.ora, colore: '#378ADD', etichetta: 'Appuntamento', key: 'appuntamenti', id: a.id, fatto: false, app: a })),
+      ...memo.filter(m => m.data === domP).map(m => ({ testo: m.testo, ora: m.ora, colore: '#27AE60', etichetta: 'Memo', key: 'memo', id: m.id, categoria: m.categoria, fatto: !!m.completato })),
+    ].sort((a, b) => (a.ora || '').localeCompare(b.ora || ''));
+    await caricaPrevisioniPartenzaWeb();   // [GPS] idem sul percorso di riserva
+    renderOggiPerTe(oggiBox, itemsOggi, itemsDomaniP);
 
     let spesaCount = 0;
     const listeIds = ((listeRes && listeRes.data) || []).map(l => l.id);
@@ -1552,34 +1612,67 @@
       const [mRes, sRes, aRes] = await Promise.all([
         sb.from('todos_scadenza').select('id, testo, data, ora, completato, categoria'),
         sb.from('scadenze').select('id, titolo, data, ora, completata, categoria, sottocategoria'),
-        sb.from('appuntamenti').select('id, titolo, data, ora'),
+        sb.from('appuntamenti').select('id, client_id, titolo, data, ora, ora_fine, luogo, partito_at, mezzo'),   // [GPS] servono al badge di partenza
       ]);
       if (!oggiBox.isConnected) return;
       const memo = (mRes && mRes.data) || [], scad = (sRes && sRes.data) || [], app = (aRes && aRes.data) || [];
       const memoOggi = memo.filter(m => m.data === oggi).map(m => ({ testo: m.testo, ora: m.ora, colore: '#27AE60', etichetta: 'Memo', key: 'memo', id: m.id, categoria: m.categoria, fatto: !!m.completato }));
       const scadOggi = scad.filter(s => s.data === oggi).map(s => ({ testo: s.titolo, ora: s.ora, colore: '#EF9F27', etichetta: 'Scadenza', key: 'scadenze', id: s.id, categoria: s.categoria, sottocategoria: s.sottocategoria, fatto: !!s.completata }));
-      const appOggiItems = app.filter(a => a.data === oggi).map(a => ({ testo: a.titolo, ora: a.ora, colore: '#378ADD', etichetta: 'Appuntamento', key: 'appuntamenti', id: a.id, fatto: false }));
+      const appOggiItems = app.filter(a => a.data === oggi).map(a => ({ testo: a.titolo, ora: a.ora, colore: '#378ADD', etichetta: 'Appuntamento', key: 'appuntamenti', id: a.id, fatto: false, app: a }));   // [GPS] app = riga grezza per il badge
       // da fare in cima, fatti (barrati) in fondo; a parità, per orario
       const items = [...scadOggi, ...appOggiItems, ...memoOggi].sort((a, b) => { if (!!a.fatto !== !!b.fatto) return a.fatto ? 1 : -1; return (a.ora || '').localeCompare(b.ora || ''); });
-      renderOggiPerTe(oggiBox, items);
+      // Programma di domani (stessi tipi di oggi): serve a organizzarsi la sera.
+      const dom = domaniGGMMAAAA();
+      const itemsDomani = [
+        ...scad.filter(s => s.data === dom).map(s => ({ testo: s.titolo, ora: s.ora, colore: '#EF9F27', etichetta: 'Scadenza', key: 'scadenze', id: s.id, categoria: s.categoria, sottocategoria: s.sottocategoria, fatto: !!s.completata })),
+        ...app.filter(a => a.data === dom).map(a => ({ testo: a.titolo, ora: a.ora, colore: '#378ADD', etichetta: 'Appuntamento', key: 'appuntamenti', id: a.id, fatto: false, app: a })),
+        ...memo.filter(m => m.data === dom).map(m => ({ testo: m.testo, ora: m.ora, colore: '#27AE60', etichetta: 'Memo', key: 'memo', id: m.id, categoria: m.categoria, fatto: !!m.completato })),
+      ].sort((a, b) => (a.ora || '').localeCompare(b.ora || ''));
+      await caricaPrevisioniPartenzaWeb();   // [GPS] senza, in Home la pillola di partenza non avrebbe dati
+      renderOggiPerTe(oggiBox, items, itemsDomani);
     } catch (e) { /* silenzioso: i conteggi restano comunque */ }
   }
 
   // Sostituisce lo scheletro di "Oggi per te" col contenuto reale.
-  function renderOggiPerTe(oggiBox, itemsOggi) {
-    if (itemsOggi.length === 0) {
+  function renderOggiPerTe(oggiBox, itemsOggi, itemsDomani) {
+    const domani = (itemsDomani || []);
+    const mostraDomani = domani.length > 0 && eOraDiMostrareDomani();
+    if (itemsOggi.length === 0 && !mostraDomani) {
       oggiBox.innerHTML = '<div class="home-oggi-vuoto"><span style="color:#5DCAA5;display:inline-flex;">' + svg(CAT_ICONS['circle-check'], 18) + '</span><span>Nessuna scadenza per oggi</span></div>';
       return;
     }
-    let h = '<div class="home-oggi-titolo">Oggi per te (' + itemsOggi.length + ')</div>';
-    itemsOggi.forEach(it => {
-      h += '<div class="home-oggi-item' + (it.fatto ? ' fatto' : '') + '" data-key="' + it.key + '" style="border-left-color:' + it.colore + '">' +
-        (it.ora ? '<span class="home-oggi-ora">' + escapeHtml(it.ora) + '</span>' : '') +
-        '<span class="home-oggi-testo">' + escapeHtml(it.testo || '') + '</span>' +
-        '<span class="home-oggi-tag">' + it.etichetta + '</span></div>';
-    });
+    const riga = (it) =>
+      '<div class="home-oggi-item' + (it.fatto ? ' fatto' : '') + '" data-key="' + it.key + '" style="border-left-color:' + it.colore + '">' +
+      (it.ora ? '<span class="home-oggi-ora">' + escapeHtml(it.ora) + '</span>' : '') +
+      '<span class="home-oggi-testo">' + escapeHtml(it.testo || '') + '</span>' +
+      '<span class="home-oggi-tag">' + it.etichetta + '</span></div>';
+
+    let h = '';
+    if (itemsOggi.length > 0) {
+      h += '<div class="home-oggi-titolo">Oggi per te (' + itemsOggi.length + ')</div>';
+      itemsOggi.forEach(it => { h += riga(it); });
+    } else {
+      h += '<div class="home-oggi-vuoto" style="margin-bottom:4px;"><span style="color:#5DCAA5;display:inline-flex;">' + svg(CAT_ICONS['circle-check'], 18) + '</span><span>Nessuna scadenza per oggi</span></div>';
+    }
+    if (mostraDomani) {
+      h += '<div class="home-domani-titolo">Domani (' + domani.length + ')</div>';
+      domani.forEach(it => { h += riga(it); });
+    }
     oggiBox.innerHTML = h;
-    oggiBox.querySelectorAll('.home-oggi-item').forEach((el, i) => { const it = itemsOggi[i]; el.onclick = () => calVaiAElemento({ modulo: it.key, id: it.id, categoria: it.categoria, sottocategoria: it.sottocategoria }); });
+
+    const tutti = itemsOggi.concat(mostraDomani ? domani : []);
+    oggiBox.querySelectorAll('.home-oggi-item').forEach((el, i) => {
+      const it = tutti[i];
+      if (!it) return;
+      el.onclick = () => calVaiAElemento({ modulo: it.key, id: it.id, categoria: it.categoria, sottocategoria: it.sottocategoria });
+      // [GPS] badge di partenza compatto, prima dell'etichetta "Appuntamento"
+      if (it.app) {
+        const pil = costruisciPillolaGpsHomeWeb(it.app)          // oggi: badge vivo
+                 || costruisciPillolaAnteprimaHomeWeb(it.app);   // entro 24h: "parti verso le..."
+        if (pil) el.insertBefore(pil, el.querySelector('.home-oggi-tag'));
+      }
+    });
+    avviaTimerBadgeGpsWeb();   // [GPS] il countdown scende da solo anche in Home
   }
 
   // ====== PROFILO ======
@@ -1890,6 +1983,9 @@
     notifBox.innerHTML = '<p class="muted" style="font-size:13px;">Verifica…</p>';
     cont.appendChild(notifBox);
     renderNotifichePush();
+
+    // [GPS] punto di partenza base (Ondata A)
+    montaSezioneBaseGpsWeb(cont);
 
     // preferenza: avviso "riapri l'app per i promemoria" - 3 scelte (default: sempre)
     const hintModoCorr = leggiHintModo();
@@ -3955,6 +4051,7 @@
     if (!user) return;
     currentUser = user;
     userId = user.id;
+    sincronizzaBaseWeb();   // [GPS] allinea l'indirizzo base col database (app<->web)
     $('user-email').textContent = user.email || '';
     $('login-view').classList.add('hidden');
     $('app-view').classList.remove('hidden');
@@ -6434,36 +6531,39 @@
     $('app-ora-fine').value = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
   }
 
-  // [RICERCA LUOGO] autocompletamento indirizzi via OpenStreetMap/Nominatim (gratuito, senza chiave).
+  // [RICERCA LUOGO] autocompletamento indirizzi via Google Places (Edge Function 'places-autocomplete').
   let appLuogoTimer = null;
   let appLuogoAbort = null;
   function chiudiSuggLuogo() {
     const box = $('app-luogo-sugg'); if (box) { box.style.display = 'none'; box.innerHTML = ''; }
   }
+  // [GPS] Ricerca indirizzi con Google Places (Edge Function places-autocomplete), come il cellulare.
+  async function cercaIndirizziGoogleWeb(q) {
+    try {
+      const { data, error } = await sb.functions.invoke('places-autocomplete', { body: { input: q, language: 'it', country: 'it' } });
+      if (error || !data) return [];
+      return (data.predictions || []).map(p => p && p.description).filter(Boolean);
+    } catch (e) { return []; }
+  }
   async function cercaLuogoApp(q) {
     const box = $('app-luogo-sugg'); if (!box) return;
     try {
-      if (appLuogoAbort) appLuogoAbort.abort();
-      appLuogoAbort = new AbortController();
-      const url = 'https://nominatim.openstreetmap.org/search?format=jsonv2&limit=5&countrycodes=it&accept-language=it&q=' + encodeURIComponent(q);
-      const res = await fetch(url, { signal: appLuogoAbort.signal, headers: { 'Accept': 'application/json' } });
-      if (!res.ok) { chiudiSuggLuogo(); return; }
-      const arr = await res.json();
-      if (!Array.isArray(arr) || !arr.length) { chiudiSuggLuogo(); return; }
+      const lista = await cercaIndirizziGoogleWeb(q);
+      if (!lista.length) { chiudiSuggLuogo(); return; }
       box.innerHTML = '';
-      arr.forEach(r => {
+      lista.forEach(desc => {
         const item = document.createElement('div');
-        item.textContent = r.display_name;
+        item.textContent = desc;
         item.style.cssText = 'padding:10px 12px; font-size:13px; cursor:pointer; border-bottom:1px solid #1e3a63; white-space:normal; line-height:1.35; color:var(--txt);';
         item.onmouseenter = () => item.style.background = '#1b3357';
         item.onmouseleave = () => item.style.background = 'transparent';
         // mousedown+preventDefault: seleziona prima che il campo perda il focus.
-        item.onmousedown = (e) => { e.preventDefault(); $('app-luogo').value = r.display_name; chiudiSuggLuogo(); };
+        item.onmousedown = (e) => { e.preventDefault(); $('app-luogo').value = desc; chiudiSuggLuogo(); };
         box.appendChild(item);
       });
       box.lastChild.style.borderBottom = 'none';
       box.style.display = 'block';
-    } catch (e) { /* abort o rete: ignora silenziosamente */ }
+    } catch (e) { /* rete: ignora silenziosamente */ }
   }
   function onLuogoInput() {
     const q = $('app-luogo').value.trim();
@@ -6607,6 +6707,649 @@
   }
   // [STATO APP] Stato di un appuntamento nel tempo: prossimo / breve (≤1h all'inizio) / corso / passato.
   // Senza ora_fine: finestra di 1 ora dall'inizio. Tutto il giorno (senza ore): fino alle 23:59.
+  // ===================== [GPS WEB] Percorrenza / badge di oggi — Ondata A =====================
+  // Porting in JS vanilla della logica dell'app (lib/urgenza.ts + lib/percorrenza.ts).
+  // Indirizzo base salvato in localStorage: "web da solo"; la sync su Supabase e' un passo dedicato.
+  const GPS_BASE_KEY = 'indirizzo_base_web';
+  const GPS_BUS = '<path d="M4 17m0 1a1 1 0 0 1 1 -1h14a1 1 0 0 1 1 1v0a1 1 0 0 1 -1 1h-14a1 1 0 0 1 -1 -1z" /><path d="M4 5m0 1a1 1 0 0 1 1 -1h14a1 1 0 0 1 1 1v9a1 1 0 0 1 -1 1h-14a1 1 0 0 1 -1 -1z" /><path d="M4 10h16" /><path d="M8 19l-1 2" /><path d="M16 19l1 2" />';
+  const GPS_CAR = '<path d="M7 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M17 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M5 17h-2v-6l2 -5h9l4 5h1a2 2 0 0 1 2 2v4h-2m-4 0h-6m-6 -6h15m-6 0v-5" />';
+
+  function leggiIndirizzoBaseWeb() { try { return localStorage.getItem(GPS_BASE_KEY) || ''; } catch (e) { return ''; } }
+  function _scriviCacheBaseWeb(v) { try { localStorage.setItem(GPS_BASE_KEY, (v || '').trim()); } catch (e) {} }
+  function salvaIndirizzoBaseWeb(v) { _scriviCacheBaseWeb(v); scriviBaseSuDbWeb(v); }   // [GPS] cache locale subito + DB in background
+
+  // [GPS] Sincronizzazione dell'indirizzo base app<->web tramite tabella impostazioni_utente.
+  async function leggiBaseDaDbWeb() {
+    try {
+      if (!userId) return null;
+      const { data, error } = await sb.from('impostazioni_utente').select('indirizzo_base').eq('user_id', userId).maybeSingle();
+      if (error) return null;
+      return data ? (data.indirizzo_base || '') : '';   // '' = riga assente o vuota
+    } catch (e) { return null; }
+  }
+  async function scriviBaseSuDbWeb(v) {
+    try {
+      if (!userId) return;
+      await sb.from('impostazioni_utente').upsert({ user_id: userId, indirizzo_base: (v || '').trim(), updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
+    } catch (e) {}
+  }
+  function aggiornaCampoBaseProfilo(v) { const el = $('prof-base-input'); if (el) el.value = v || ''; }
+  async function sincronizzaBaseWeb() {
+    const dbVal = await leggiBaseDaDbWeb();     // null = offline/errore, '' = vuoto, valore = presente
+    if (dbVal == null) return;                  // offline: tengo la cache locale
+    const localVal = leggiIndirizzoBaseWeb();
+    if (dbVal) {                                // il DB ha un valore: e' la fonte di verita'
+      if (dbVal !== localVal) { _scriviCacheBaseWeb(dbVal); aggiornaCampoBaseProfilo(dbVal); if (typeof renderAppLista === 'function') renderAppLista(); }
+    } else if (localVal) {                      // DB vuoto ma ho una base locale: la carico su (migrazione una tantum)
+      await scriviBaseSuDbWeb(localVal);
+    }
+  }
+
+  // Chiavi per giorno (come l'app: si azzerano da sole al cambio di giorno).
+  function chiaveGiornoGpsWeb() { return oggiWeb(); } // YYYY-MM-DD
+  function chiaveDurateGpsWeb() { return 'gps_durate_badge_web_' + chiaveGiornoGpsWeb(); }
+  function chiavePartitiGpsWeb() { return 'gps_partiti_web_' + chiaveGiornoGpsWeb(); }
+
+  let gpsDurateOggiWeb = {};   // { keyStabile: durataSec } congelate su disco
+  let gpsPartitiOggiWeb = [];  // [keyStabile] "sono partito" di oggi
+  let gpsInFlightWeb = {};     // richieste travel-time in corso (anti-doppioni)
+  let gpsIdratatoWeb = false;
+
+  function idrataGpsWeb() {
+    if (gpsIdratatoWeb) return;
+    try { gpsDurateOggiWeb = JSON.parse(localStorage.getItem(chiaveDurateGpsWeb()) || '{}') || {}; } catch (e) { gpsDurateOggiWeb = {}; }
+    try { gpsPartitiOggiWeb = JSON.parse(localStorage.getItem(chiavePartitiGpsWeb()) || '[]') || []; } catch (e) { gpsPartitiOggiWeb = []; }
+    // pulizia leggera delle chiavi di altri giorni
+    try {
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const k = localStorage.key(i);
+        if (!k) continue;
+        if ((k.indexOf('gps_durate_badge_web_') === 0 || k.indexOf('gps_partiti_web_') === 0)
+            && k.indexOf(chiaveGiornoGpsWeb()) === -1) localStorage.removeItem(k);
+      }
+    } catch (e) {}
+    gpsIdratatoWeb = true;
+  }
+  function salvaGpsDurateWeb() { try { localStorage.setItem(chiaveDurateGpsWeb(), JSON.stringify(gpsDurateOggiWeb)); } catch (e) {} }
+  function salvaGpsPartitiWeb() { try { localStorage.setItem(chiavePartitiGpsWeb(), JSON.stringify(gpsPartitiOggiWeb)); } catch (e) {} }
+
+  function chiaveStabileGpsWeb(a) { return a.client_id || a.id; }
+
+  // [GPS] Registro chiave -> appuntamento, riempito da chi disegna un badge (lista o Home).
+  // Serve al timer del refresh: la Home non popola appItemsCaricati.
+  let gpsAppPerChiaveWeb = {};
+  function registraAppGpsWeb(a) { if (a) gpsAppPerChiaveWeb[chiaveStabileGpsWeb(a)] = a; }
+
+  // Appuntamento (data gg/mm/aaaa + ora) -> ms epoch dell'inizio.
+  function appuntamentoMsWeb(a) {
+    if (!a || !a.data) return null;
+    const p = a.data.split('/'); if (p.length !== 3) return null;
+    const g = parseInt(p[0]), m = parseInt(p[1]) - 1, y = parseInt(p[2]);
+    if (isNaN(g) || isNaN(m) || isNaN(y)) return null;
+    const hm = (a.ora || '00:00').split(':');
+    return new Date(y, m, g, parseInt(hm[0]) || 0, parseInt(hm[1]) || 0, 0).getTime();
+  }
+  function eOggiApp(a) { return !!(a && a.data && dataAppToWeb(a.data) === oggiWeb()); }
+
+  // formattaDurata come urgenza.ts (web: 'min' e 'h').
+  function formattaDurataWeb(min) {
+    if (min < 60) return min + ' min';
+    const h = Math.floor(min / 60), m = min % 60;
+    return m === 0 ? (h + ' h') : (h + ' h ' + m + ' min');
+  }
+
+  // Porting fedele di calcolaBadge (lib/urgenza.ts): 4 stati.
+  function calcolaBadgeWeb(appMs, durataSec, adessoMs) {
+    const durataMin = Math.round(durataSec / 60);
+    const partiEntroMs = appMs - durataSec * 1000;
+    const minutiAllaPartenza = Math.round((partiEntroMs - adessoMs) / 60000);
+    let colore = 'verde';
+    if (minutiAllaPartenza <= 0) colore = 'ritardo';
+    else if (minutiAllaPartenza <= 10) colore = 'rosso';
+    else if (minutiAllaPartenza <= 30) colore = 'ambra';
+    return { colore, durataMin, partiEntroMs, minutiAllaPartenza, lampeggia: colore === 'rosso' };
+  }
+
+  // Chiama la Edge Function travel-time (la stessa dell'app), dal client web.
+  async function calcolaPercorrenzaWeb(origin, destination, mezzo) {
+    const mode = MEZZI_GPS_WEB[mezzo] ? mezzo : 'driving';
+    try {
+      const { data, error } = await sb.functions.invoke('travel-time', { body: { origin, destination, mode } });
+      if (error) return { ok: false, motivo: error.message || 'errore' };
+      if (!data || data.status !== 'OK' || typeof data.durataTrafficoSec !== 'number') {
+        const st = (data && (data.status || data.error)) || 'errore';
+        // Nessun percorso trovato: con i mezzi pubblici succede dove Google non ha gli orari.
+        if (st === 'ZERO_RESULTS') {
+          return { ok: false, motivo: mode === 'transit'
+            ? 'con i mezzi non risulta un collegamento per questo tragitto'
+            : 'nessun percorso trovato' };
+        }
+        return { ok: false, motivo: st };
+      }
+      return { ok: true, durataTrafficoSec: data.durataTrafficoSec };
+    } catch (e) { return { ok: false, motivo: (e && e.message) || 'errore' }; }
+  }
+
+  // Assicura (async) che la durata congelata esista; se manca la calcola UNA volta e ri-renderizza.
+  async function assicuraDurataGpsWeb(a) {
+    if (a && a.mezzo === 'transit') return;          // [GPS] coi mezzi non calcoliamo: niente chiamate sprecate
+    const key = chiaveStabileGpsWeb(a);
+    if (gpsDurateOggiWeb[key] != null || gpsInFlightWeb[key]) return;
+    const base = leggiIndirizzoBaseWeb();
+    if (!base || !a.luogo) return;
+    gpsInFlightWeb[key] = true;
+    const r = await calcolaPercorrenzaWeb(base, a.luogo, a.mezzo);
+    delete gpsInFlightWeb[key];
+    if (r.ok) {
+      gpsDurateOggiWeb[key] = r.durataTrafficoSec;
+      salvaGpsDurateWeb();
+      renderAppLista();   // numero ora CONGELATO: il badge compare e non sparisce piu'
+    }
+  }
+
+  function segnaPartitoWeb(a) {
+    const key = chiaveStabileGpsWeb(a);
+    if (gpsPartitiOggiWeb.indexOf(key) === -1) { gpsPartitiOggiWeb.push(key); salvaGpsPartitiWeb(); }
+    // [GPS] "sono partito" condiviso: sul DB, cosi' lo vedono anche l'app e il server
+    // (che smette di mandarti la notifica). La cache locale resta per la reattivita' e per l'offline.
+    const adesso = new Date().toISOString();
+    a.partito_at = adesso;                                   // effetto immediato sul render
+    const riga = (appItemsCaricati || []).find(x => String(x.id) === String(a.id));
+    if (riga) riga.partito_at = adesso;
+    scriviPartitoSuDbWeb(a.id, adesso);
+    renderAppLista();
+  }
+
+  async function scriviPartitoSuDbWeb(id, quando) {
+    try {
+      const { error } = await sb.from('appuntamenti').update({ partito_at: quando }).eq('id', id);
+      if (error) console.log('[GPS] partito_at non salvato sul DB:', error.message);   // resta valido in locale
+    } catch (e) { console.log('[GPS] partito_at non salvato sul DB:', e && e.message); }
+  }
+
+  // Palette dei 4 stati (ritardo = grigio-ardesia come l'app).
+  const GPS_PAL = {
+    verde:   { bg: 'rgba(46,160,110,0.14)',  bd: 'rgba(46,160,110,0.42)',  tx: '#b6e6cf', ic: '#6bd0a0' },
+    ambra:   { bg: 'rgba(230,160,40,0.14)',  bd: 'rgba(230,160,40,0.42)',  tx: '#f0d59a', ic: '#e6a028' },
+    rosso:   { bg: 'rgba(226,86,75,0.16)',   bd: 'rgba(226,86,75,0.5)',    tx: '#f3b3ac', ic: '#e2564b' },
+    ritardo: { bg: 'rgba(123,138,168,0.14)', bd: 'rgba(123,138,168,0.42)', tx: '#c3cee0', ic: '#9aa8c4' }
+  };
+
+  // Costruisce l'elemento badge per la card (o null se non applicabile). SINCRONO.
+  function costruisciBadgeGpsWeb(a) {
+    idrataGpsWeb();
+    registraAppGpsWeb(a);
+    if (!a || !a.luogo || !eOggiApp(a)) return null;
+    const st = statoAppuntamento(a);
+    if (st && st.stato === 'passato') return null;              // appuntamento finito -> niente badge
+    if (a.partito_at) return null;                              // [GPS] partito (da qui o dall'app) -> niente badge
+    if (a.mezzo === 'transit') return null;                     // [GPS] coi mezzi l'ora di partenza la decide la corsa: niente countdown
+    const key = chiaveStabileGpsWeb(a);
+    if (gpsPartitiOggiWeb.indexOf(key) !== -1) return null;      // "sono partito" -> nascosto per la giornata
+    if (!leggiIndirizzoBaseWeb()) return null;                  // senza indirizzo base non calcoliamo
+
+    const durataSec = gpsDurateOggiWeb[key];
+    if (durataSec == null) {                                    // non ancora congelato: calcolo + placeholder
+      assicuraDurataGpsWeb(a);
+      const ph = document.createElement('div');
+      ph.style.cssText = 'margin-top:7px; font-size:12px; color:#8aa0c8; display:inline-flex; align-items:center; gap:6px;';
+      ph.innerHTML = '<span style="display:inline-flex;color:#8aa0c8;">' + svg(GPS_CAR, 14) + '</span> Calcolo percorrenza…';
+      ph.setAttribute('data-gpsbadge', key);   // [GPS] marcatore per il refresh automatico
+      return ph;
+    }
+
+    const appMs = appuntamentoMsWeb(a);
+    if (appMs == null) return null;
+    const b = calcolaBadgeWeb(appMs, durataSec, Date.now());
+    const pal = GPS_PAL[b.colore];
+
+    const box = document.createElement('div');
+    box.style.cssText = 'margin-top:8px; display:inline-flex; flex-direction:column; gap:6px; background:' + pal.bg + '; border:1px solid ' + pal.bd + '; border-radius:10px; padding:8px 11px;' + (b.lampeggia ? ' animation:gpsBlink 1s ease-in-out infinite;' : '');
+    box.setAttribute('data-gpsbadge', key);   // [GPS] marcatore per il refresh automatico
+
+    let testo;
+    if (b.colore === 'ritardo') testo = 'Sei in ritardo · ti servono ~' + formattaDurataWeb(b.durataMin);
+    else if (b.colore === 'rosso') testo = 'È ora di partire · ~' + formattaDurataWeb(b.durataMin) + ' di viaggio';
+    else testo = 'Parti tra ' + b.minutiAllaPartenza + ' min · ~' + formattaDurataWeb(b.durataMin) + ' di viaggio';
+
+    const riga = document.createElement('div');
+    riga.style.cssText = 'display:inline-flex; align-items:center; gap:7px; font-size:13px; font-weight:600; color:' + pal.tx + ';';
+    riga.innerHTML = '<span style="display:inline-flex; color:' + pal.ic + ';">' + svg(GPS_CAR, 16) + '</span><span>' + escapeHtml(testo) + '</span>';
+    box.appendChild(riga);
+
+    // "Sono partito": negli stati in cui e' ora di muoversi -> nasconde il badge per la giornata.
+    if (b.colore === 'rosso' || b.colore === 'ritardo') {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = 'Sono partito';
+      btn.style.cssText = 'align-self:flex-start; background:rgba(74,144,226,0.16); border:1px solid rgba(74,144,226,0.55); color:#9cc4f2; border-radius:8px; padding:5px 12px; font-size:12px; cursor:pointer;';
+      btn.onclick = (e) => { e.stopPropagation(); segnaPartitoWeb(a); };
+      box.appendChild(btn);
+    }
+    return box;
+  }
+
+  // [GPS] Previsioni di partenza calcolate dal SERVER (percorrenze_cache): sono le stesse
+  // che vede l'app, cosi' i due non possono raccontare cose diverse. Chiave = id del DB.
+  let gpsPrevisioniWeb = {};
+  async function caricaPrevisioniPartenzaWeb() {
+    try {
+      const oggi = new Date();
+      const iso = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+      const domani = new Date(oggi.getTime() + 86400000);
+      const { data, error } = await sb.from('percorrenze_cache')
+        .select('appuntamento_id, durata_sec, giorno')
+        .in('giorno', [iso(oggi), iso(domani)]);
+      if (error) return;
+      const m = {};
+      (data || []).forEach(r => { m[String(r.appuntamento_id)] = r.durata_sec; });
+      gpsPrevisioniWeb = m;
+    } catch (e) {}
+  }
+
+  // [GPS] "Parti verso le 7:10 · ~50 min" per gli appuntamenti entro 24 ore che non hanno
+  // ancora il badge vivo. Serve a organizzarsi la sera prima (la sveglia, il treno).
+  // Nessuna chiamata a Google: il numero e' quello che il server ha gia' calcolato.
+  function costruisciAnteprimaPartenzaWeb(a) {
+    if (!a || !a.luogo || a.partito_at || a.mezzo === 'transit') return null;
+    const st = statoAppuntamento(a);
+    if (st && st.stato === 'passato') return null;
+    const durataSec = gpsPrevisioniWeb[String(a.id)];
+    if (durataSec == null) return null;
+    const appMs = appuntamentoMsWeb(a);
+    if (appMs == null) return null;
+    const oreAllInizio = (appMs - Date.now()) / 3600000;
+    if (oreAllInizio <= 0 || oreAllInizio > 24) return null;
+
+    const partenzaMs = appMs - durataSec * 1000;
+    const dPart = new Date(partenzaMs);
+    const ora = String(dPart.getHours()).padStart(2, '0') + ':' + String(dPart.getMinutes()).padStart(2, '0');
+    const oggiStr = oggiWeb();
+    const quando = (dataAppToWeb(a.data) === oggiStr) ? 'Oggi' : 'Domani';
+
+    const box = document.createElement('div');
+    box.setAttribute('data-gpsprev', chiaveStabileGpsWeb(a));
+    box.style.cssText = 'margin-top:8px; display:inline-flex; align-items:center; gap:7px; background:rgba(79,157,235,0.10); border:1px solid rgba(79,157,235,0.30); border-radius:10px; padding:7px 11px; font-size:12.5px; color:#9fc3ee;';
+    box.innerHTML = '<span style="display:inline-flex; color:#7fb2e8;">' + svg(GPS_CAR, 15) + '</span>'
+      + '<span><b>' + quando + ' parti verso le ' + ora + '</b> · ~' + escapeHtml(formattaDurataWeb(Math.round(durataSec / 60))) + '</span>';
+    return box;
+  }
+
+  // [GPS] Pillola compatta per la Home con l'ora di partenza prevista (dal server).
+  // Usata quando non c'e' il badge vivo: appuntamenti di domani, o di oggi ancora lontani.
+  function costruisciPillolaAnteprimaHomeWeb(a) {
+    if (!a || !a.luogo || a.partito_at) return null;
+    if (a.mezzo === 'transit') {
+      // Coi mezzi niente orario: una pillola che rimanda a Maps (l'origine e' la base).
+      const base = leggiIndirizzoBaseWeb();
+      if (!base) return null;
+      const appMsT = appuntamentoMsWeb(a);
+      if (appMsT == null) return null;
+      const oreT = (appMsT - Date.now()) / 3600000;
+      if (oreT <= 0 || oreT > 24) return null;
+      const urlT = 'https://www.google.com/maps/dir/?api=1&origin=' + encodeURIComponent(base)
+        + '&destination=' + encodeURIComponent(String(a.luogo).trim()) + '&travelmode=transit';
+      const link = document.createElement('a');
+      link.href = urlT; link.target = '_blank'; link.rel = 'noopener';
+      link.className = 'home-oggi-pil';
+      link.style.cssText = 'background:rgba(74,144,226,0.14); border:1px solid rgba(74,144,226,0.45); color:#9cc4f2; text-decoration:none;';
+      link.onclick = (e) => e.stopPropagation();
+      link.innerHTML = '<span style="display:inline-flex;">' + svg(GPS_BUS, 13) + '</span><span>Itinerario</span>';
+      return link;
+    }
+    const durataSec = gpsPrevisioniWeb[String(a.id)];
+    if (durataSec == null) return null;
+    const appMs = appuntamentoMsWeb(a);
+    if (appMs == null) return null;
+    const ore = (appMs - Date.now()) / 3600000;
+    if (ore <= 0 || ore > 24) return null;
+    const d = new Date(appMs - durataSec * 1000);
+    const ora = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+
+    const pil = document.createElement('span');
+    pil.className = 'home-oggi-pil';
+    pil.setAttribute('data-gpsprev', chiaveStabileGpsWeb(a));
+    pil.style.cssText = 'background:rgba(79,157,235,0.10); border:1px solid rgba(79,157,235,0.30); color:#9fc3ee;';
+    pil.innerHTML = '<span style="display:inline-flex; color:#7fb2e8;">' + svg(GPS_CAR, 13) + '</span>'
+      + '<span>Parti verso le ' + ora + '</span>'
+      + '<span class="sec">· ' + escapeHtml(formattaDurataWeb(Math.round(durataSec / 60))) + '</span>';
+    return pil;
+  }
+
+  // [GPS] Sulla card degli appuntamenti coi mezzi: scorciatoia all'itinerario, senza numeri.
+  // Compare da 24 ore prima dell'inizio (prima non serve, dopo l'appuntamento nemmeno).
+  function costruisciMezziMapsWeb(a) {
+    if (!a || a.mezzo !== 'transit' || !a.luogo || !String(a.luogo).trim()) return null;
+    if (a.partito_at) return null;
+    const st = statoAppuntamento(a);
+    if (st && st.stato === 'passato') return null;
+    const appMs = appuntamentoMsWeb(a);
+    if (appMs == null) return null;
+    const oreAllInizio = (appMs - Date.now()) / 3600000;
+    if (oreAllInizio > 24 || oreAllInizio < 0) return null;      // finestra: le 24 ore prima
+    const base = leggiIndirizzoBaseWeb();
+    if (!base) return null;
+
+    const url = 'https://www.google.com/maps/dir/?api=1'
+      + '&origin=' + encodeURIComponent(base)
+      + '&destination=' + encodeURIComponent(String(a.luogo).trim())
+      + '&travelmode=transit';
+    const link = document.createElement('a');
+    link.href = url; link.target = '_blank'; link.rel = 'noopener';
+    link.setAttribute('data-gpsmezzi', chiaveStabileGpsWeb(a));
+    link.onclick = (e) => e.stopPropagation();
+    link.style.cssText = 'margin-top:8px; display:inline-flex; align-items:center; gap:7px; background:rgba(74,144,226,0.14); border:1px solid rgba(74,144,226,0.45); color:#9cc4f2; border-radius:10px; padding:7px 12px; font-size:12.5px; font-weight:600; text-decoration:none;';
+    link.innerHTML = '<span style="display:inline-flex;">' + svg(GPS_BUS, 15) + '</span><span>Itinerario coi mezzi su Maps</span>';
+    return link;
+  }
+
+  // [GPS] Coi mezzi pubblici non calcoliamo noi: corse, cambi e biglietti stanno su Maps.
+  // Mostriamo il perche' + un pulsante che apre l'itinerario gia' impostato.
+  function mostraMezziSuMapsWeb(origine, dest) {
+    const out = $('app-gps-verifica-out');
+    if (!out) return;
+    const url = 'https://www.google.com/maps/dir/?api=1'
+      + '&origin=' + encodeURIComponent(origine)
+      + '&destination=' + encodeURIComponent(dest)
+      + '&travelmode=transit';
+    out.style.color = '#c6d0e4';
+    out.innerHTML =
+      '<div style="display:flex; gap:9px; align-items:flex-start; padding:10px 11px; border-radius:11px; background:#0f1c2e; border:1px solid #22304f;">'
+      + '<span style="display:inline-flex; color:#9fb2d4; flex:none; margin-top:1px;">' + svg(GPS_BUS, 17) + '</span>'
+      + '<div style="flex:1;">'
+        + '<div style="font-size:13px; font-weight:700; color:#c6d0e4;">L\'ora di partenza dipende dalla corsa: controlla l\'orario del bus o del treno.</div>'
+        + '<div style="font-size:12px; color:#8aa0c8; margin-top:2px;">Corse, cambi e biglietti li trovi su Maps.</div>'
+        + '<a href="' + escapeHtml(url) + '" target="_blank" rel="noopener" style="display:inline-flex; align-items:center; gap:7px; margin-top:9px; background:rgba(74,144,226,0.16); border:1px solid rgba(74,144,226,0.55); color:#9cc4f2; border-radius:9px; padding:7px 13px; font-size:12.5px; font-weight:700; text-decoration:none;">'
+          + '<span style="display:inline-flex;">' + svg(GPS_BUS, 15) + '</span>Apri l\'itinerario in Maps</a>'
+      + '</div></div>';
+  }
+
+  // [GPS] Versione compatta del badge per la Home: pillola inline + "Sono partito" solo
+  // quando serve davvero (rosso / ritardo). Stessi dati e stessi 4 stati della card.
+  function costruisciPillolaGpsHomeWeb(a) {
+    idrataGpsWeb();
+    registraAppGpsWeb(a);
+    if (!a || !a.luogo || !String(a.luogo).trim() || !eOggiApp(a)) return null;
+    const st = statoAppuntamento(a);
+    if (st && st.stato === 'passato') return null;               // appuntamento finito -> niente badge
+    if (a.partito_at) return null;                               // [GPS] partito (da qui o dall'app) -> niente badge
+    if (a.mezzo === 'transit') return null;                      // [GPS] coi mezzi l'ora di partenza la decide la corsa: niente countdown
+    const key = chiaveStabileGpsWeb(a);
+    if (gpsPartitiOggiWeb.indexOf(key) !== -1) return null;      // "sono partito" -> nascosto per la giornata
+    if (!leggiIndirizzoBaseWeb()) return null;                   // senza indirizzo base non calcoliamo
+
+    const durataSec = gpsDurateOggiWeb[key];
+    if (durataSec == null) { assicuraDurataGpsWeb(a); return null; }   // in calcolo: compare al giro dopo
+
+    const appMs = appuntamentoMsWeb(a);
+    if (appMs == null) return null;
+    const b = calcolaBadgeWeb(appMs, durataSec, Date.now());
+    const pal = GPS_PAL[b.colore];
+
+    const wrap = document.createElement('span');
+    wrap.className = 'home-oggi-gps';
+    wrap.setAttribute('data-gpspil', key);
+
+    let testo;
+    if (b.colore === 'ritardo') testo = 'In ritardo';
+    else if (b.colore === 'rosso') testo = 'È ora di partire';
+    else testo = 'Parti tra ' + b.minutiAllaPartenza + ' min';
+
+    const pil = document.createElement('span');
+    pil.className = 'home-oggi-pil';
+    pil.style.cssText = 'background:' + pal.bg + '; border:1px solid ' + pal.bd + '; color:' + pal.tx + ';' + (b.lampeggia ? ' animation:gpsBlink 1s ease-in-out infinite;' : '');
+    pil.innerHTML = '<span style="display:inline-flex; color:' + pal.ic + ';">' + svg(GPS_CAR, 13) + '</span>'
+                  + '<span>' + escapeHtml(testo) + '</span>'
+                  + '<span class="sec">· ' + escapeHtml(formattaDurataWeb(b.durataMin)) + '</span>';
+    wrap.appendChild(pil);
+
+    if (b.colore === 'rosso' || b.colore === 'ritardo') {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'home-oggi-pil-btn';
+      btn.textContent = 'Sono partito';
+      btn.onclick = (e) => {
+        e.stopPropagation();          // non aprire l'appuntamento: resto in Home
+        segnaPartitoWeb(a);
+        wrap.remove();                // la lista della Home non si ridisegna da sola
+      };
+      wrap.appendChild(btn);
+    }
+    return wrap;
+  }
+
+  // [GPS] Badge vivo: ogni 60s ridisegna SOLO i badge di percorrenza, senza toccare il resto
+  // della pagina e SENZA chiamare Google (riusa la durata gia' congelata).
+  let gpsTimerBadgeWeb = null;
+  // Ogni tot giri ricontrolla se il server ha prodotto previsioni nuove: senza questo,
+  // una previsione calcolata DOPO l'apertura della pagina si vedrebbe solo ricaricando.
+  let gpsGiriTimerWeb = 0;
+  async function ricontrollaPrevisioniWeb() {
+    const prima = JSON.stringify(gpsPrevisioniWeb);
+    await caricaPrevisioniPartenzaWeb();
+    if (JSON.stringify(gpsPrevisioniWeb) !== prima) renderAppLista();   // qualcosa e' cambiato: ridisegna
+  }
+
+  function aggiornaBadgeGpsWeb() {
+    try {
+      if (document.hidden) return;                       // scheda in secondo piano: niente lavoro
+      // ogni 5 minuti (5 giri da 60s) una controllatina alle previsioni del server
+      if (++gpsGiriTimerWeb % 5 === 0) ricontrollaPrevisioniWeb();
+      const nodi = document.querySelectorAll('[data-gpsbadge],[data-gpspil]');
+      if (!nodi.length) return;
+      (appItemsCaricati || []).forEach(a => registraAppGpsWeb(a));
+      nodi.forEach(vecchio => {
+        const inHome = vecchio.hasAttribute('data-gpspil');
+        const a = gpsAppPerChiaveWeb[vecchio.getAttribute(inHome ? 'data-gpspil' : 'data-gpsbadge')];
+        if (!a) return;
+        const nuovo = inHome ? costruisciPillolaGpsHomeWeb(a) : costruisciBadgeGpsWeb(a);
+        if (nuovo) vecchio.replaceWith(nuovo); else vecchio.remove();
+      });
+    } catch (e) {}
+  }
+  function avviaTimerBadgeGpsWeb() {
+    if (gpsTimerBadgeWeb) return;                        // una volta sola
+    gpsTimerBadgeWeb = setInterval(aggiornaBadgeGpsWeb, 60000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) { aggiornaBadgeGpsWeb(); ricontrollaPrevisioniWeb(); } });
+  }
+
+  // Autocomplete generico (riusa Google Places) per un campo + box suggerimenti.
+  let gpsGenTimer = {}, gpsGenAbort = {};
+  function chiudiSuggGen(boxId) { const b = $(boxId); if (b) { b.style.display = 'none'; b.innerHTML = ''; } }
+  async function cercaLuogoGen(q, inputId, boxId) {
+    const box = $(boxId); if (!box) return;
+    try {
+      const lista = await cercaIndirizziGoogleWeb(q);
+      if (!lista.length) { chiudiSuggGen(boxId); return; }
+      box.innerHTML = '';
+      lista.forEach(desc => {
+        const item = document.createElement('div');
+        item.textContent = desc;
+        item.style.cssText = 'padding:10px 12px; font-size:13px; cursor:pointer; border-bottom:1px solid #1e3a63; white-space:normal; line-height:1.35; color:var(--txt);';
+        item.onmouseenter = () => item.style.background = '#1b3357';
+        item.onmouseleave = () => item.style.background = 'transparent';
+        item.onmousedown = (e) => { e.preventDefault(); $(inputId).value = desc; chiudiSuggGen(boxId); };
+        box.appendChild(item);
+      });
+      box.lastChild.style.borderBottom = 'none';
+      box.style.display = 'block';
+    } catch (e) {}
+  }
+  function onCampoLuogoGen(inputId, boxId) {
+    const q = ($(inputId).value || '').trim();
+    if (gpsGenTimer[boxId]) clearTimeout(gpsGenTimer[boxId]);
+    if (q.length < 3) { chiudiSuggGen(boxId); return; }
+    gpsGenTimer[boxId] = setTimeout(() => cercaLuogoGen(q, inputId, boxId), 400); // debounce: evita una chiamata a ogni tasto premuto
+  }
+
+  // Sezione "Punto di partenza" nel Profilo (indirizzo base salvato in localStorage).
+  function montaSezioneBaseGpsWeb(cont) {
+    const h = document.createElement('div'); h.className = 'prof-sez';
+    h.innerHTML = '<span style="color:#888780;display:inline-flex;">' + svg(GPS_CAR, 16) + '</span> Punto di partenza (percorrenza)';
+    cont.appendChild(h);
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'margin:4px 0 12px; font-size:13px; color:#c9cde8;';
+    wrap.innerHTML =
+      '<p class="muted" style="font-size:13px; margin:0 0 8px;">Indirizzo da cui parti di solito (casa o lavoro). Serve per calcolare quanto ci metti ad arrivare agli appuntamenti di oggi. Salvato su questo browser.</p>' +
+      '<div style="position:relative;">' +
+        '<input id="prof-base-input" class="field" placeholder="Indirizzo di partenza…" autocomplete="off" style="margin:0;" />' +
+        '<div id="prof-base-sugg" style="display:none; position:absolute; left:0; right:0; top:calc(100% + 3px); z-index:60; background:var(--card); border:1px solid #274a7d; border-radius:10px; overflow:hidden; box-shadow:0 10px 26px rgba(0,0,0,.5);"></div>' +
+      '</div>' +
+      '<button id="prof-base-salva" type="button" style="margin-top:8px; background:#4f9deb; color:#fff; border:none; border-radius:10px; padding:9px 16px; font-size:14px; cursor:pointer;">Salva indirizzo</button>';
+    cont.appendChild(wrap);
+    $('prof-base-input').value = leggiIndirizzoBaseWeb();
+    $('prof-base-input').addEventListener('input', () => onCampoLuogoGen('prof-base-input', 'prof-base-sugg'));
+    $('prof-base-input').addEventListener('blur', () => setTimeout(() => chiudiSuggGen('prof-base-sugg'), 150));
+    $('prof-base-salva').onclick = () => { salvaIndirizzoBaseWeb($('prof-base-input').value); homeToast('Indirizzo di partenza salvato'); };
+    sincronizzaBaseWeb();   // [GPS] all'apertura del Profilo allinea il campo col DB
+  }
+
+
+  // ===================== [GPS WEB] Ondata B — stime sui futuri + "appuntamento precedente" =====================
+  const GPS_STIME_KEY = 'stime_percorrenza_web';
+  let gpsStimeWeb = {};            // { keyStabile: { min, origine } } stime congelate (persistenti)
+  let gpsStimeIdratateWeb = false;
+  let gpsStimaCorrenteWeb = null;  // { min, origine } dell'ultima verifica nel form corrente
+
+  function idrataStimeWeb() {
+    if (gpsStimeIdratateWeb) return;
+    try { gpsStimeWeb = JSON.parse(localStorage.getItem(GPS_STIME_KEY) || '{}') || {}; } catch (e) { gpsStimeWeb = {}; }
+    gpsStimeIdratateWeb = true;
+  }
+  function salvaStimeWeb() { try { localStorage.setItem(GPS_STIME_KEY, JSON.stringify(gpsStimeWeb)); } catch (e) {} }
+
+  // Al salvataggio dell'appuntamento: congela la stima calcolata in verifica (se c'e').
+  function salvaStimaSuAppWeb(cid) {
+    if (!cid || !gpsStimaCorrenteWeb) return;
+    idrataStimeWeb();
+    gpsStimeWeb[cid] = gpsStimaCorrenteWeb;
+    salvaStimeWeb();
+  }
+
+  // Trova l'appuntamento dello STESSO giorno che inizia prima di questo (con luogo).
+  function trovaApptPrecedenteWeb(dataApp, ora) {
+    const appMs = appuntamentoMsWeb({ data: dataApp, ora: ora });
+    if (appMs == null) return null;
+    const cand = (appItemsCaricati || []).filter(function (x) {
+      if (!x || x.data !== dataApp || !x.luogo) return false;
+      if (idAppInModifica && x.id === idAppInModifica) return false; // escludi se stesso, in modifica
+      const m = appuntamentoMsWeb(x);
+      return m != null && m < appMs;
+    });
+    cand.sort(function (a, b) { return appuntamentoMsWeb(b) - appuntamentoMsWeb(a); });
+    return cand[0] || null;
+  }
+
+  // Verifica "dall'appuntamento prima" (con calcolo del margine).
+  async function verificaDaApptPrimaWeb() {
+    selOrigBtnGpsWeb('app-gps-btn-prec');
+    if ($('app-parti-da-wrap')) $('app-parti-da-wrap').style.display = 'none';
+    const out = $('app-gps-verifica-out');
+    const dest = ($('app-luogo').value || '').trim();
+    const dataW = $('app-data').value;   // yyyy-mm-dd
+    const ora = $('app-ora').value || '';
+    if (!dest || !dataW || !ora) { homeToast('Servono luogo, data e ora dell\'appuntamento'); return; }
+    const dataApp = dataWebToApp(dataW); // gg/mm/aaaa
+    const prec = trovaApptPrecedenteWeb(dataApp, ora);
+    if (!prec) { if (out) { out.style.color = '#8aa0c8'; out.textContent = 'Nessun appuntamento (con luogo) prima di questo, quel giorno'; } return; }
+    if (out) { out.style.color = '#8aa0c8'; out.textContent = 'Calcolo…'; }
+    if (gpsMezzoCorrenteWeb === 'transit') { mostraMezziSuMapsWeb(prec.luogo, dest); return; }   // [GPS] coi mezzi si va su Maps
+    const r = await calcolaPercorrenzaWeb(prec.luogo, dest, gpsMezzoCorrenteWeb);
+    if (!out) return;
+    if (!r.ok) { out.style.color = '#e2564b'; out.textContent = 'Percorrenza non disponibile (' + r.motivo + ')'; return; }
+    const min = Math.round(r.durataTrafficoSec / 60);
+    gpsStimaCorrenteWeb = { min: min, origine: 'prec' };
+    const appMs = appuntamentoMsWeb({ data: dataApp, ora: ora });
+    const partenzaMs = appuntamentoMsWeb({ data: prec.data, ora: prec.ora_fine || prec.ora });
+    const disponibili = (appMs != null && partenzaMs != null) ? Math.round((appMs - partenzaMs) / 60000) : null;
+    const nomePrec = '«' + (prec.titolo || 'appuntamento prima') + '»';
+    if (disponibili != null && min > disponibili) {
+      out.style.color = '#e2564b';
+      out.textContent = 'Da ' + nomePrec + ': hai solo ' + formattaDurataWeb(Math.max(0, disponibili)) + ', ne servono ~' + formattaDurataWeb(min);
+    } else if (disponibili != null) {
+      out.style.color = '#9cc4f2';
+      out.textContent = 'Da ' + nomePrec + ': ci arrivi · margine ' + formattaDurataWeb(disponibili - min) + ' (~' + formattaDurataWeb(min) + ' di viaggio)';
+    } else {
+      out.style.color = '#9cc4f2';
+      out.textContent = 'Da ' + nomePrec + ': ~' + formattaDurataWeb(min) + ' di viaggio';
+    }
+  }
+
+  // Stima congelata sui futuri (mostrata sulla card quando NON c'e' il badge di oggi).
+  function costruisciStimaFuturaWeb(a) {
+    idrataStimeWeb();
+    if (!a || !a.luogo) return null;
+    const st = statoAppuntamento(a);
+    if (st && st.stato === 'passato') return null;
+    const s = gpsStimeWeb[chiaveStabileGpsWeb(a)];
+    if (!s || typeof s.min !== 'number') return null;
+    const daDove = s.origine === 'prec' ? 'dall\'appuntamento prima' : 'dall\'indirizzo di partenza';
+    const box = document.createElement('div');
+    box.style.cssText = 'margin-top:8px; display:inline-flex; align-items:center; gap:7px; background:rgba(79,157,235,0.12); border:1px solid rgba(79,157,235,0.32); border-radius:10px; padding:7px 11px; font-size:12px; color:#bcd4f2;';
+    box.innerHTML = '<span style="display:inline-flex; color:#7ea9dd;">' + svg(GPS_CAR, 15) + '</span><span>≈ ' + formattaDurataWeb(s.min) + ' di viaggio · ' + daDove + '</span>';
+    return box;
+  }
+
+
+  // [GPS] 3 bottoni origine (Base / Appto prec. / Cerca-digita) con evidenziazione del selezionato.
+  // [GPS] Mezzo di trasporto scelto per l'appuntamento in scrittura.
+  const MEZZI_GPS_WEB = { driving: 'in auto', walking: 'a piedi', bicycling: 'in bici', transit: 'con i mezzi' };
+  let gpsMezzoCorrenteWeb = 'driving';
+  function selMezzoGpsWeb(m) {
+    if (!MEZZI_GPS_WEB[m]) m = 'driving';
+    gpsMezzoCorrenteWeb = m;
+    Object.keys(MEZZI_GPS_WEB).forEach(function (k) {
+      const b = $('app-mezzo-' + k); if (b) b.classList.toggle('sel', k === m);
+    });
+    const nota = $('app-mezzo-nota'); if (nota) nota.style.display = (m === 'transit' ? 'block' : 'none');
+    // cambiare mezzo invalida la stima gia' mostrata: i tempi non sono piu' quelli
+    gpsStimaCorrenteWeb = null;
+    const out = $('app-gps-verifica-out'); if (out) out.textContent = '';
+    resetOrigBtnGpsWeb();
+  }
+
+  function resetOrigBtnGpsWeb() {
+    ['app-gps-btn-base', 'app-gps-btn-prec', 'app-gps-btn-digita'].forEach(function (id) { const b = $(id); if (b) b.classList.remove('sel'); });
+  }
+  function selOrigBtnGpsWeb(id) {
+    resetOrigBtnGpsWeb();
+    const b = $(id); if (b) b.classList.add('sel');
+  }
+  function apriDigitaGpsWeb() {
+    selOrigBtnGpsWeb('app-gps-btn-digita');
+    const w = $('app-parti-da-wrap'); if (w) w.style.display = 'block';
+    const f = $('app-parti-da'); if (f) f.focus();
+  }
+  async function verificaDaBaseWeb() {
+    selOrigBtnGpsWeb('app-gps-btn-base');
+    const w = $('app-parti-da-wrap'); if (w) w.style.display = 'none';
+    const out = $('app-gps-verifica-out');
+    const dest = ($('app-luogo').value || '').trim();
+    if (!dest) { homeToast('Inserisci prima il luogo dell\'appuntamento'); return; }
+    const base = leggiIndirizzoBaseWeb();
+    if (!base) { homeToast('Imposta il tuo indirizzo base nel Profilo'); return; }
+    if (gpsMezzoCorrenteWeb === 'transit') { mostraMezziSuMapsWeb(base, dest); return; }   // [GPS] coi mezzi si va su Maps
+    if (out) { out.style.color = '#8aa0c8'; out.textContent = 'Calcolo…'; }
+    const r = await calcolaPercorrenzaWeb(base, dest, gpsMezzoCorrenteWeb);
+    if (!out) return;
+    if (r.ok) { const min = Math.round(r.durataTrafficoSec / 60); gpsStimaCorrenteWeb = { min: min, origine: 'indirizzo' }; out.style.color = '#9cc4f2'; out.textContent = '≈ ' + formattaDurataWeb(min) + ' di viaggio · dalla base'; }
+    else { out.style.color = '#e2564b'; out.textContent = 'Percorrenza non disponibile (' + r.motivo + ')'; }
+  }
+  async function verificaDaDigitatoWeb() {
+    const out = $('app-gps-verifica-out');
+    const dest = ($('app-luogo').value || '').trim();
+    if (!dest) { homeToast('Inserisci prima il luogo dell\'appuntamento'); return; }
+    const origin = ($('app-parti-da').value || '').trim();
+    if (!origin) { homeToast('Cerca o digita un punto di partenza'); return; }
+    if (gpsMezzoCorrenteWeb === 'transit') { mostraMezziSuMapsWeb(origin, dest); return; }   // [GPS] coi mezzi si va su Maps
+    if (out) { out.style.color = '#8aa0c8'; out.textContent = 'Calcolo…'; }
+    const r = await calcolaPercorrenzaWeb(origin, dest, gpsMezzoCorrenteWeb);
+    if (!out) return;
+    if (r.ok) { const min = Math.round(r.durataTrafficoSec / 60); gpsStimaCorrenteWeb = { min: min, origine: 'indirizzo' }; out.style.color = '#9cc4f2'; out.textContent = '≈ ' + formattaDurataWeb(min) + ' di viaggio · dall\'indirizzo digitato'; }
+    else { out.style.color = '#e2564b'; out.textContent = 'Percorrenza non disponibile (' + r.motivo + ')'; }
+  }
+
+
   function statoAppuntamento(a) {
     if (!a || !a.data) return null;
     const p = a.data.split('/'); if (p.length !== 3) return null;
@@ -6634,6 +7377,11 @@
   function resetAppForm() {
     idAppInModifica = null;
     ['app-titolo', 'app-data', 'app-ora', 'app-ora-fine', 'app-luogo', 'app-note'].forEach(id => { $(id).value = ''; });
+    if ($('app-parti-da')) $('app-parti-da').value = '';   // [GPS] campo partenza vuoto: se resta vuoto la verifica parte dalla base
+    if ($('app-gps-verifica-out')) $('app-gps-verifica-out').textContent = '';
+    gpsStimaCorrenteWeb = null;
+    selMezzoGpsWeb('driving');   // [GPS] nuovo appuntamento: si riparte dall'auto
+    resetOrigBtnGpsWeb(); if ($('app-parti-da-wrap')) $('app-parti-da-wrap').style.display = 'none';
     chiudiSuggLuogo();
     $('app-data').value = oggiWeb();   // proponi la data di oggi
     aggiornaGiornoApp();
@@ -6716,7 +7464,18 @@
 
   function ordinaApp(arr) {
     const chiave = (a) => (a.data ? a.data.split('/').reverse().join('') : '99999999') + (a.ora || '99:99');
-    return arr.slice().sort((a, b) => chiave(a).localeCompare(chiave(b)));
+    return arr.slice().sort((a, b) => {
+      const pa = eConclusoApp(a) ? 1 : 0, pb = eConclusoApp(b) ? 1 : 0;
+      if (pa !== pb) return pa - pb;                                  // i conclusi sempre dopo i da fare
+      if (pa === 1) return chiave(b).localeCompare(chiave(a));        // fra i conclusi: il piu' recente per primo
+      return chiave(a).localeCompare(chiave(b));                      // fra i da fare: il piu' vicino per primo
+    });
+  }
+
+  // Concluso = quello che la card marca "Passato".
+  function eConclusoApp(a) {
+    const st = statoAppuntamento(a);
+    return !!(st && st.stato === 'passato');
   }
 
   // [ALLEGATI APP] mappa: client_id dell'appuntamento -> suoi documenti collegati.
@@ -6950,6 +7709,19 @@
       sub.innerHTML = parti.join('<span style="opacity:.5;">&nbsp;&nbsp;·&nbsp;&nbsp;</span>');
       mid.appendChild(sub);
     }
+    // [GPS] badge percorrenza di oggi (4 stati + "Sono partito")
+    { const _mz = costruisciMezziMapsWeb(a);
+      if (_mz) mid.appendChild(_mz);
+      else {
+        const _bg = costruisciBadgeGpsWeb(a);
+        if (_bg) mid.appendChild(_bg);
+        else {
+          const _ap = costruisciAnteprimaPartenzaWeb(a);      // [GPS] "domani parti verso le..."
+          if (_ap) mid.appendChild(_ap);
+          else { const _sf = costruisciStimaFuturaWeb(a); if (_sf) mid.appendChild(_sf); }
+        }
+      } }
+
     // [ALLEGATI APP] documenti collegati (apri col link firmato) + rimozione.
     const allegatiApp = (a.client_id && appAllegatiPerClient[a.client_id]) || [];
     if (allegatiApp.length) {
@@ -7005,17 +7777,29 @@
     const arr = appItemsCaricati || [];
     cont.innerHTML = '';
     $('app-item-vuoto').classList.toggle('hidden', arr.length > 0);
-    ordinaApp(arr).forEach(a => cont.appendChild(rigaApp(a)));
+    let sepMesso = false;
+    ordinaApp(arr).forEach(a => {
+      if (!sepMesso && eConclusoApp(a)) {                    // prima riga conclusa: intestazione di sezione
+        const sep = document.createElement('div');
+        sep.className = 'app-sep-conclusi';
+        sep.textContent = 'Conclusi';
+        cont.appendChild(sep);
+        sepMesso = true;
+      }
+      cont.appendChild(rigaApp(a));
+    });
     calEvidenziaSePendente('appuntamenti', cont);   // [CALENDARIO] evidenzia l'elemento aperto dal calendario
+    avviaTimerBadgeGpsWeb();                       // [GPS] badge vivo (idempotente)
   }
 
   async function caricaAppuntamenti() {
     const cont = $('app-item-container'); cont.innerHTML = '<p class="muted">Caricamento…</p>';
     const { data, error } = await sb.from('appuntamenti')
-      .select('id, client_id, titolo, data, ora, ora_fine, luogo, note, anticipo, datanotifica, oranotifica, ripetizione, giornomese, fine_tipo, fine_data, fine_conteggio, serie_client_id, condiviso, user_id')
+      .select('id, client_id, titolo, data, ora, ora_fine, luogo, note, anticipo, datanotifica, oranotifica, ripetizione, giornomese, fine_tipo, fine_data, fine_conteggio, serie_client_id, condiviso, user_id, partito_at, mezzo')
       .order('id', { ascending: true });
     if (error) { cont.innerHTML = '<p class="err">Errore: ' + error.message + '</p>'; return; }
     appItemsCaricati = data || [];
+    await caricaPrevisioniPartenzaWeb();         // [GPS] previsioni di partenza calcolate dal server
     await caricaAllegatiApp(appItemsCaricati);   // [ALLEGATI APP] carica i documenti collegati
     renderAppLista();
   }
@@ -7036,22 +7820,24 @@
     }
     if (idAppInModifica) {
       // In modifica aggiorno solo i campi base della singola occorrenza (la ricorrenza non si tocca qui).
-      const { error } = await sb.from('appuntamenti').update({ titolo, data, ora, ora_fine, luogo, note, anticipo: prom.anticipo, datanotifica: prom.datanotifica, oranotifica: prom.oranotifica }).eq('id', idAppInModifica);
+      const { error } = await sb.from('appuntamenti').update({ titolo, data, ora, ora_fine, luogo, note, mezzo: gpsMezzoCorrenteWeb, anticipo: prom.anticipo, datanotifica: prom.datanotifica, oranotifica: prom.oranotifica }).eq('id', idAppInModifica);
       if (error) { homeToast('Errore modifica appuntamento: ' + error.message); return; }
       await flushPendingAllegati(appEditClientId);
+      salvaStimaSuAppWeb(appEditClientId);
     } else {
       const rip = leggiRipetizioneDalAppForm();
       if (rip === null) return; // validazione fallita (toast già mostrato)
       if (rip.ripetizione === 'nessuna') {
         const cidNuovo = uuid();
         const { error } = await sb.from('appuntamenti').insert([{
-          client_id: cidNuovo, titolo, data, ora, ora_fine, luogo, note,
+          client_id: cidNuovo, titolo, data, ora, ora_fine, luogo, note, mezzo: gpsMezzoCorrenteWeb,
           anticipo: prom.anticipo, datanotifica: prom.datanotifica, oranotifica: prom.oranotifica,
           ripetizione: 'nessuna', giornomese: null, fine_tipo: 'nessuna', fine_data: null, fine_conteggio: null,
           serie_client_id: null, user_id: userId
         }]);
         if (error) { homeToast('Errore aggiunta appuntamento: ' + error.message); return; }
         await flushPendingAllegati(cidNuovo);
+        salvaStimaSuAppWeb(cidNuovo);
       } else {
         // Ricorrente: come l'app, genero in anticipo tutta la serie di date.
         if (!data) { homeToast('Per una ripetizione serve una data'); return; }
@@ -7085,6 +7871,11 @@
     $('app-ora').value = a.ora || '';
     $('app-ora-fine').value = a.ora_fine || '';
     $('app-luogo').value = a.luogo || '';
+    selMezzoGpsWeb(a.mezzo || 'driving');   // [GPS] riprende il mezzo scelto per questo appuntamento
+    if ($('app-parti-da')) $('app-parti-da').value = '';   // [GPS] campo partenza vuoto: se resta vuoto la verifica parte dalla base
+    if ($('app-gps-verifica-out')) $('app-gps-verifica-out').textContent = '';
+    gpsStimaCorrenteWeb = null;
+    resetOrigBtnGpsWeb(); if ($('app-parti-da-wrap')) $('app-parti-da-wrap').style.display = 'none';
     $('app-note').value = a.note || '';
     appPromemScelti = (a.anticipo && a.anticipo !== 'nessuno') ? String(a.anticipo).split(',').filter(Boolean) : [];
     $('app-promem-data').value = a.datanotifica ? dataAppToWeb(a.datanotifica) : '';
@@ -7545,6 +8336,16 @@
   $('app-ora').addEventListener('blur', autoOraFineApp);   // [FIX ORARIO] su 'blur' e non 'change': evita l'auto-fine su valori parziali mentre digiti (es. 10:03 -> 11:03)
   $('app-luogo').addEventListener('input', onLuogoInput);
   $('app-luogo').addEventListener('blur', () => setTimeout(chiudiSuggLuogo, 150));
+  // [GPS] campo "Parti da" (autocomplete) + verifica percorrenza in creazione
+  $('app-parti-da').addEventListener('input', () => onCampoLuogoGen('app-parti-da', 'app-parti-da-sugg'));
+  $('app-parti-da').addEventListener('blur', () => setTimeout(() => chiudiSuggGen('app-parti-da-sugg'), 150));
+  Object.keys(MEZZI_GPS_WEB).forEach(function (k) {
+    const b = $('app-mezzo-' + k); if (b) b.onclick = function () { selMezzoGpsWeb(k); };
+  });
+  $('app-gps-btn-base').onclick = verificaDaBaseWeb;
+  $('app-gps-btn-prec').onclick = verificaDaApptPrimaWeb;
+  $('app-gps-btn-digita').onclick = apriDigitaGpsWeb;
+  $('app-gps-digita-conferma').onclick = verificaDaDigitatoWeb;
   $('app-titolo').addEventListener('keydown', e => { if (e.key === 'Enter') salvaApp(); });
   $('app-promem-add').addEventListener('click', (e) => { e.stopPropagation(); toggleAppPromemMenu(); });
   $('app-promem-menu').addEventListener('click', (e) => e.stopPropagation());
