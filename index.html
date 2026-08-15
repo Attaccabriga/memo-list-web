@@ -758,13 +758,14 @@
               <option value="nessuna">Nessuna ripetizione</option>
               <option value="ogni_minuti">Ogni tot minuti</option>
               <option value="ogni_ore">Ogni tot ore</option>
+              <option value="ogni_giorni">Ogni tot giorni</option>
               <option value="giornaliero">Ogni giorno</option>
               <option value="settimanale">Ogni settimana</option>
               <option value="mensile">Ogni mese</option>
               <option value="ogni_x">Ogni X del mese</option>
               <option value="annuale">Ogni anno</option>
             </select>
-            <input id="memo-rip-intervallo" class="field hidden" type="number" min="1" placeholder="Ogni quanti (minuti oppure ore)…" />
+            <input id="memo-rip-intervallo" class="field hidden" type="number" min="1" placeholder="Ogni quanti (minuti, ore oppure giorni)…" />
             <input id="memo-rip-giorno" class="field hidden" type="number" min="1" max="31" placeholder="Giorno del mese (1–31)…" />
             <select id="memo-weekend" class="field hidden">
               <option value="nessuna">Se cade nel weekend: lascia com'è</option>
@@ -883,12 +884,14 @@
           </div>
           <select id="scad-rip" class="field">
             <option value="nessuna">Nessuna ripetizione</option>
+            <option value="ogni_giorni">Ogni tot giorni</option>
             <option value="giornaliero">Ogni giorno</option>
             <option value="settimanale">Ogni settimana</option>
             <option value="mensile">Ogni mese</option>
             <option value="ogni_x">Ogni X del mese</option>
             <option value="annuale">Ogni anno</option>
           </select>
+          <input id="scad-rip-intervallo" class="field hidden" type="number" min="1" placeholder="Ogni quanti giorni (es. 14)…" />
           <input id="scad-rip-giorno" class="field hidden" type="number" min="1" max="31" placeholder="Giorno del mese (1–31)…" />
           <select id="scad-weekend" class="field hidden">
             <option value="nessuna">Se cade nel weekend: lascia com'è</option>
@@ -1005,12 +1008,14 @@
         <div id="app-rip-row" style="display:flex; flex-direction:column; gap:10px; margin-bottom:12px;">
           <select id="app-rip" class="field" style="margin:0;">
             <option value="nessuna">Nessuna ripetizione</option>
+            <option value="ogni_giorni">Ogni tot giorni</option>
             <option value="giornaliero">Ogni giorno</option>
             <option value="settimanale">Ogni settimana</option>
             <option value="mensile">Ogni mese</option>
             <option value="ogni_x">Ogni X del mese</option>
             <option value="annuale">Ogni anno</option>
           </select>
+          <input id="app-rip-intervallo" class="field hidden" type="number" min="1" placeholder="Ogni quanti giorni (es. 14)…" style="margin:0;" />
           <input id="app-rip-giorno" class="field hidden" type="number" min="1" max="31" placeholder="Giorno del mese (1–31)…" style="margin:0;" />
           <div id="app-fine-box" class="hidden" style="display:flex; flex-direction:column; gap:10px;">
             <select id="app-fine-tipo" class="field" style="margin:0;">
@@ -5393,10 +5398,16 @@
     renderMemoLista();
   }
 
+  // [OGNI N GIORNI] Le ripetizioni che chiedono "ogni quanto" e il fattore con cui il
+  // numero digitato diventa minuti: ore *60, giorni *1440. Stessa colonna per tutti e
+  // tre, come gia' faceva per minuti e ore. Vale anche per scadenze e appuntamenti.
+  const RIP_CON_INTERVALLO_WEB = ['ogni_minuti', 'ogni_ore', 'ogni_giorni'];
+  const FATTORE_INTERVALLO_WEB = (rip) => rip === 'ogni_ore' ? 60 : rip === 'ogni_giorni' ? 1440 : 1;
+
   // [RIPETIZIONE MEMO] mostra/nasconde i campi giusti in base al tipo scelto.
   function aggiornaVisibilitaRipMemo() {
     const rip = $('memo-rip').value;
-    $('memo-rip-intervallo').classList.toggle('hidden', !(rip === 'ogni_minuti' || rip === 'ogni_ore'));
+    $('memo-rip-intervallo').classList.toggle('hidden', !RIP_CON_INTERVALLO_WEB.includes(rip));
     $('memo-rip-giorno').classList.toggle('hidden', rip !== 'ogni_x');
     $('memo-weekend').classList.toggle('hidden', !(rip === 'mensile' || rip === 'annuale'));
     $('memo-fine-box').classList.toggle('hidden', rip === 'nessuna');
@@ -5405,11 +5416,11 @@
     $('memo-fine-conteggio').classList.toggle('hidden', ft !== 'conteggio');
   }
 
-  const RIP_LABEL_MEMO = { ogni_minuti: 'Ogni tot minuti', ogni_ore: 'Ogni tot ore', giornaliero: 'Ogni giorno', settimanale: 'Ogni settimana', mensile: 'Ogni mese', ogni_x: 'Ogni X del mese', annuale: 'Ogni anno' };
+  const RIP_LABEL_MEMO = { ogni_minuti: 'Ogni tot minuti', ogni_ore: 'Ogni tot ore', ogni_giorni: 'Ogni tot giorni', giornaliero: 'Ogni giorno', settimanale: 'Ogni settimana', mensile: 'Ogni mese', ogni_x: 'Ogni X del mese', annuale: 'Ogni anno' };
   function labelRipMemo(m) {
     if (!m.ripetizione || m.ripetizione === 'nessuna') return '';
     let s = RIP_LABEL_MEMO[m.ripetizione] || 'Ripetizione';
-    if ((m.ripetizione === 'ogni_minuti' || m.ripetizione === 'ogni_ore') && m.intervallo_minuti) s += ': ' + (m.ripetizione === 'ogni_ore' ? (m.intervallo_minuti / 60) : m.intervallo_minuti);
+    if (RIP_CON_INTERVALLO_WEB.includes(m.ripetizione) && m.intervallo_minuti) s += ': ' + (m.intervallo_minuti / FATTORE_INTERVALLO_WEB(m.ripetizione));
     if (m.ripetizione === 'ogni_x' && m.giornomese) s += ': giorno ' + m.giornomese;
     if (m.fine_tipo === 'conteggio' && m.fine_conteggio) s += '  ·  ' + m.fine_conteggio + ' volte';
     if (m.fine_tipo === 'data' && m.fine_data) s += '  ·  fino al ' + m.fine_data;
@@ -5424,8 +5435,8 @@
     if (rip !== 'nessuna' && fineTipo === 'conteggio' && !(parseInt($('memo-fine-conteggio').value) >= 2)) {
       homeToast('Indica quante volte deve ripetersi (almeno 2)'); return null;
     }
-    const intervallo = (rip === 'ogni_minuti' || rip === 'ogni_ore') && $('memo-rip-intervallo').value
-      ? Math.round(parseFloat($('memo-rip-intervallo').value) * (rip === 'ogni_ore' ? 60 : 1)) : null;
+    const intervallo = RIP_CON_INTERVALLO_WEB.includes(rip) && $('memo-rip-intervallo').value
+      ? Math.round(parseFloat($('memo-rip-intervallo').value) * FATTORE_INTERVALLO_WEB(rip)) : null;
     let ancora = null;
     if ((rip === 'mensile' || rip === 'annuale') && dataApp) ancora = parseInt(String(dataApp).split('/')[0]) || null;
     return {
@@ -5475,7 +5486,7 @@
     aggiornaGiornoMemo();
     $('memo-nota').value = m.nota || '';
     $('memo-rip').value = m.ripetizione || 'nessuna';
-    $('memo-rip-intervallo').value = (m.ripetizione === 'ogni_ore' && m.intervallo_minuti) ? (m.intervallo_minuti / 60) : (m.intervallo_minuti || '');
+    $('memo-rip-intervallo').value = m.intervallo_minuti ? (m.intervallo_minuti / FATTORE_INTERVALLO_WEB(m.ripetizione)) : '';
     $('memo-rip-giorno').value = m.giornomese || '';
     $('memo-weekend').value = m.regola_weekend || 'nessuna';
     $('memo-fine-tipo').value = m.fine_tipo || 'nessuna';
@@ -5524,6 +5535,10 @@
     const d = new Date(+p[2], +p[1]-1, +p[0], parseInt(h), parseInt(min));
     const t = m.ripetizione, iv = m.intervallo_minuti;
     if ((t === 'ogni_minuti' || t === 'ogni_ore') && iv) d.setMinutes(d.getMinutes() + iv);
+    // [OGNI N GIORNI] I giorni si SOMMANO IN GIORNI, non in minuti: il 25 ottobre 2026
+    // finisce l'ora legale, e un "ogni 14 giorni alle 09:00" sommato in minuti
+    // diventerebbe delle 08:00 per sempre (ogni occorrenza nasce dalla precedente).
+    else if (t === 'ogni_giorni' && iv) d.setDate(d.getDate() + Math.round(iv / 1440));
     else if (t === 'giornaliero') d.setDate(d.getDate()+1);
     else if (t === 'settimanale') d.setDate(d.getDate()+7);
     else if (t === 'mensile') d.setMonth(d.getMonth()+1);
@@ -6021,7 +6036,7 @@
   function resetScadForm() {
     idScadInModifica = null;
     $('scad-titolo').value = ''; $('scad-nota').value = ''; precompilaDataOraScad();
-    $('scad-rip').value = 'nessuna'; $('scad-rip-giorno').value = ''; $('scad-weekend').value = 'nessuna';
+    $('scad-rip').value = 'nessuna'; $('scad-rip-giorno').value = ''; $('scad-rip-intervallo').value = ''; $('scad-weekend').value = 'nessuna';
     $('scad-fine-tipo').value = 'nessuna'; $('scad-fine-data').value = ''; $('scad-fine-conteggio').value = '';
     aggiornaVisibilitaRipScad();
     scadSottoattivita = []; renderScadSottoattivita();
@@ -6188,6 +6203,7 @@
   // [RICORRENZA SCAD] mostra/nasconde i campi giusti in base al tipo scelto.
   function aggiornaVisibilitaRipScad() {
     const rip = $('scad-rip').value;
+    $('scad-rip-intervallo').classList.toggle('hidden', rip !== 'ogni_giorni');
     $('scad-rip-giorno').classList.toggle('hidden', rip !== 'ogni_x');
     $('scad-weekend').classList.toggle('hidden', !(rip === 'mensile' || rip === 'annuale'));
     $('scad-fine-box').classList.toggle('hidden', rip === 'nessuna');
@@ -6218,6 +6234,7 @@
     return {
       ripetizione: rip,
       giornomese: rip === 'ogni_x' ? ($('scad-rip-giorno').value || null) : null,
+      intervallo_minuti: (rip === 'ogni_giorni' && $('scad-rip-intervallo').value) ? Math.round(parseFloat($('scad-rip-intervallo').value) * 1440) : null,   // [OGNI N GIORNI]
       fine_tipo: fineTipo,
       fine_data: (rip !== 'nessuna' && fineTipo === 'data') ? dataWebToApp($('scad-fine-data').value) : null,
       fine_conteggio: (rip !== 'nessuna' && fineTipo === 'conteggio') ? (parseInt($('scad-fine-conteggio').value) || null) : null,
@@ -6341,7 +6358,7 @@
     if (!scadCat || !scadSub) return;
     const cont = $('scad-item-container'); cont.innerHTML = '<p class="muted">Caricamento…</p>';
     const { data, error } = await sb.from('scadenze')
-      .select('id, client_id, titolo, data, ora, nota, completata, completata_il, condiviso, user_id, ripetizione, giornomese, fine_tipo, fine_data, fine_conteggio, occorrenza_numero, genitore_client_id, regola_weekend, giorno_ancora, sottoattivita, anticipo, datanotifica, oranotifica')
+      .select('id, client_id, titolo, data, ora, nota, completata, completata_il, condiviso, user_id, ripetizione, giornomese, intervallo_minuti, fine_tipo, fine_data, fine_conteggio, occorrenza_numero, genitore_client_id, regola_weekend, giorno_ancora, sottoattivita, anticipo, datanotifica, oranotifica')
       .eq('categoria', scadCat.id).eq('sottocategoria', scadSub.id)
       .order('id', { ascending: true });
     if (error) { cont.innerHTML = '<p class="err">Errore: ' + error.message + '</p>'; return; }
@@ -6406,6 +6423,7 @@
     $('scad-ora').value = s.ora || '';
     $('scad-nota').value = s.nota || '';
     $('scad-rip').value = s.ripetizione || 'nessuna';
+    $('scad-rip-intervallo').value = s.intervallo_minuti ? (s.intervallo_minuti / 1440) : '';   // [OGNI N GIORNI]
     $('scad-rip-giorno').value = s.giornomese || '';
     $('scad-weekend').value = s.regola_weekend || 'nessuna';
     $('scad-fine-tipo').value = s.fine_tipo || 'nessuna';
@@ -6481,7 +6499,7 @@
             sottoattivita: (s.sottoattivita || []).map(x => ({ testo: x.testo, completata: false })),
             allegati: s.allegati || [],   // [ALLEGATI RICORRENTI] prima veniva azzerato qui, mentre l'app lo copiava: le due gambe divergevano
             categoria: scadCat.id, sottocategoria: scadSub.id,
-            ripetizione: s.ripetizione, giornomese: s.giornomese, fine_tipo: s.fine_tipo, fine_data: s.fine_data,
+            ripetizione: s.ripetizione, giornomese: s.giornomese, intervallo_minuti: s.intervallo_minuti || null, fine_tipo: s.fine_tipo, fine_data: s.fine_data,
             fine_conteggio: s.fine_conteggio, occorrenza_numero: occNum, genitore_client_id: s.client_id,
             regola_weekend: s.regola_weekend || null, giorno_ancora: s.giorno_ancora ?? null, user_id: userId
           }]);
@@ -7713,7 +7731,7 @@
     chiudiSuggLuogo();
     $('app-data').value = oggiWeb();   // proponi la data di oggi
     aggiornaGiornoApp();
-    $('app-rip').value = 'nessuna'; $('app-rip-giorno').value = '';
+    $('app-rip').value = 'nessuna'; $('app-rip-giorno').value = ''; $('app-rip-intervallo').value = '';
     $('app-fine-tipo').value = 'nessuna'; $('app-fine-data').value = ''; $('app-fine-conteggio').value = '';
     $('app-rip-row').classList.remove('hidden');
     aggiornaVisibilitaRipApp();
@@ -7726,6 +7744,7 @@
   // [RICORRENZA APP] mostra/nasconde i campi ricorrenza in base alle scelte.
   function aggiornaVisibilitaRipApp() {
     const rip = $('app-rip').value;
+    $('app-rip-intervallo').classList.toggle('hidden', rip !== 'ogni_giorni');
     $('app-rip-giorno').classList.toggle('hidden', rip !== 'ogni_x');
     $('app-fine-box').classList.toggle('hidden', rip === 'nessuna');
     const ft = $('app-fine-tipo').value;
@@ -7751,6 +7770,7 @@
     return {
       ripetizione: rip,
       giornomese: rip === 'ogni_x' ? ($('app-rip-giorno').value || null) : null,
+      intervallo_minuti: (rip === 'ogni_giorni' && $('app-rip-intervallo').value) ? Math.round(parseFloat($('app-rip-intervallo').value) * 1440) : null,   // [OGNI N GIORNI]
       fine_tipo: fineTipo,
       fine_data: (rip !== 'nessuna' && fineTipo === 'data') ? dataWebToApp($('app-fine-data').value) : null,
       fine_conteggio: (rip !== 'nessuna' && fineTipo === 'conteggio') ? (parseInt($('app-fine-conteggio').value) || null) : null
@@ -7758,11 +7778,13 @@
   }
 
   // Calcola la data successiva di un appuntamento ricorrente (formato app gg/mm/aaaa).
-  function calcolaProssimaDataAppunt(dataStr, tipo, giornomese) {
+  function calcolaProssimaDataAppunt(dataStr, tipo, giornomese, intervalloMinuti) {
     if (!dataStr) return null;
     const p = dataStr.split('/');
     const d = new Date(+p[2], +p[1] - 1, +p[0]);
-    if (tipo === 'giornaliero') d.setDate(d.getDate() + 1);
+    // [OGNI N GIORNI] si somma in giorni: vedi il commento nel motore dei memo.
+    if (tipo === 'ogni_giorni' && intervalloMinuti) d.setDate(d.getDate() + Math.round(intervalloMinuti / 1440));
+    else if (tipo === 'giornaliero') d.setDate(d.getDate() + 1);
     else if (tipo === 'settimanale') d.setDate(d.getDate() + 7);
     else if (tipo === 'mensile') d.setMonth(d.getMonth() + 1);
     else if (tipo === 'annuale') d.setFullYear(d.getFullYear() + 1);
@@ -7781,7 +7803,7 @@
     while (date.length < CAP) {
       if (rip.fine_tipo === 'conteggio' && rip.fine_conteggio && date.length >= rip.fine_conteggio) break;
       if (rip.fine_tipo === 'nessuna' && date.length >= CAP_SENZA_FINE) break;
-      const next = calcolaProssimaDataAppunt(cur, rip.ripetizione, rip.giornomese);
+      const next = calcolaProssimaDataAppunt(cur, rip.ripetizione, rip.giornomese, rip.intervallo_minuti);
       if (!next) break;
       if (rip.fine_tipo === 'data' && rip.fine_data && appDataDopo(next, rip.fine_data)) break;
       date.push(next);
@@ -8204,7 +8226,7 @@
         const righe = date.map(dt => ({
           client_id: uuid(), titolo, data: dt, ora, ora_fine, luogo, note,
           anticipo: prom.anticipo, datanotifica: prom.datanotifica, oranotifica: prom.oranotifica,
-          ripetizione: rip.ripetizione, giornomese: rip.giornomese,
+          ripetizione: rip.ripetizione, giornomese: rip.giornomese, intervallo_minuti: rip.intervallo_minuti || null,   // [OGNI N GIORNI]
           fine_tipo: rip.fine_tipo, fine_data: rip.fine_data, fine_conteggio: rip.fine_conteggio,
           serie_client_id: serieId, user_id: userId
         }));
