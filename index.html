@@ -6774,6 +6774,102 @@
   const GPS_CAR = '<path d="M7 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M17 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M5 17h-2v-6l2 -5h9l4 5h1a2 2 0 0 1 2 2v4h-2m-4 0h-6m-6 -6h15m-6 0v-5" />';
 
   function leggiIndirizzoBaseWeb() { try { return localStorage.getItem(GPS_BASE_KEY) || ''; } catch (e) { return ''; } }
+
+  // ============================ [MAPPE] NAVIGATORE PREFERITO ============================
+  // Google e Yandex non si coprono a vicenda: Yandex e' preciso in Russia e povero da noi,
+  // Google il contrario (verificato il 14/8). Sceglie l'utente; la scelta sta in
+  // impostazioni_utente, quindi vale anche sull'app.
+  // Tre stati, e i primi due NON vanno confusi:
+  //   'nonscelto' = non ha ancora deciso  -> popup, la risposta SI SALVA
+  //   'chiedi'    = vuole decidere ogni volta -> popup, la risposta NON si salva
+  //   'google'/'yandex' -> si apre e basta
+  // ⚠️ La lettura e' SINCRONA di proposito: aprire una finestra dopo un `await` la fa
+  // bloccare dal browser come popup indesiderato. L'apertura resta dentro il click.
+  const GPS_NAV_KEY = 'navigatore_preferito_web';
+  const NAV_VALIDI = ['nonscelto', 'chiedi', 'google', 'yandex'];
+  function leggiNavigatoreWeb() {
+    try { const v = localStorage.getItem(GPS_NAV_KEY); return NAV_VALIDI.includes(v) ? v : 'nonscelto'; }
+    catch (e) { return 'nonscelto'; }
+  }
+  function salvaNavigatoreWeb(v) {
+    const val = NAV_VALIDI.includes(v) ? v : 'nonscelto';
+    try { localStorage.setItem(GPS_NAV_KEY, val); } catch (e) {}
+    scriviNavigatoreSuDbWeb(val);
+  }
+  async function scriviNavigatoreSuDbWeb(v) {
+    try {
+      if (!userId) return;
+      await sb.from('impostazioni_utente').upsert({ user_id: userId, navigatore: v, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
+    } catch (e) {}
+  }
+  async function sincronizzaNavigatoreWeb() {
+    try {
+      if (!userId) return;
+      const { data, error } = await sb.from('impostazioni_utente').select('navigatore').eq('user_id', userId).maybeSingle();
+      if (error || !data) return;
+      const dbVal = NAV_VALIDI.includes(data.navigatore) ? data.navigatore : 'nonscelto';
+      if (dbVal !== leggiNavigatoreWeb()) { try { localStorage.setItem(GPS_NAV_KEY, dbVal); } catch (e) {} }
+    } catch (e) {}
+  }
+
+  // Gli URL. Per Yandex la tilde che separa i due punti NON va codificata,
+  // altrimenti non riconosce la destinazione. (rtt: mt = mezzi pubblici)
+  function urlItinerarioMezziWeb(nav, origine, dest) {
+    const o = encodeURIComponent(String(origine || '').trim());
+    const d = encodeURIComponent(String(dest || '').trim());
+    return nav === 'yandex'
+      ? 'https://yandex.com/maps/?rtext=' + o + '~' + d + '&rtt=mt'
+      : 'https://www.google.com/maps/dir/?api=1&origin=' + o + '&destination=' + d + '&travelmode=transit';
+  }
+
+  // Apre l'itinerario coi mezzi rispettando la preferenza. Da chiamare DENTRO un click.
+  // Se la preferenza c'e' apre subito; altrimenti mostra il popup, e l'apertura avviene
+  // nel click del bottone del popup (di nuovo un gesto utente: niente blocco del browser).
+  function apriItinerarioMezziWeb(origine, dest) {
+    const pref = leggiNavigatoreWeb();
+    if (pref === 'google' || pref === 'yandex') {
+      window.open(urlItinerarioMezziWeb(pref, origine, dest), '_blank', 'noopener');
+      return;
+    }
+    const primaVolta = pref === 'nonscelto';
+    popupNavigatoreWeb(primaVolta, (nav) => urlItinerarioMezziWeb(nav, origine, dest));
+  }
+
+  // Popup a due scelte, stesso stile di confermaPopup. Alla PRIMA volta aggiunge dove
+  // si cambia (l'unico momento in cui l'utente ha il contesto per capirlo) e salva.
+  function popupNavigatoreWeb(primaVolta, costruisciUrl) {
+    const ov = document.createElement('div'); ov.className = 'modal-overlay';
+    const card = document.createElement('div'); card.className = 'modal-card'; card.style.maxWidth = '420px';
+    const h = document.createElement('div'); h.className = 'modal-head';
+    h.innerHTML = '<h3>Apri con</h3>';
+    card.appendChild(h);
+    const p = document.createElement('p');
+    p.style.cssText = 'margin:2px 0 18px; color:var(--txt); white-space:pre-line; line-height:1.45;';
+    p.textContent = primaVolta
+      ? 'Scegli l\'app di mappe.\nPotrai cambiarla quando vuoi dal Profilo.'
+      : 'Scegli l\'app di mappe.';
+    card.appendChild(p);
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap;';
+    const chiudi = () => ov.remove();
+    [['google', 'Google Maps'], ['yandex', 'Yandex Maps']].forEach(([k, label]) => {
+      const b = document.createElement('button'); b.className = 'btn'; b.style.width = 'auto'; b.style.color = '#fff';
+      b.style.background = 'var(--greenBtn)'; b.textContent = label;
+      b.onclick = () => {
+        // window.open QUI: siamo dentro il click, il browser non blocca.
+        window.open(costruisciUrl(k), '_blank', 'noopener');
+        if (primaVolta) { salvaNavigatoreWeb(k); homeToast('Preferenza salvata — la cambi dal Profilo'); }
+        chiudi();
+      };
+      row.appendChild(b);
+    });
+    const bAnn = document.createElement('button'); bAnn.className = 'btn btn-ghost'; bAnn.style.width = 'auto';
+    bAnn.textContent = 'Annulla'; bAnn.onclick = chiudi;
+    row.appendChild(bAnn);
+    card.appendChild(row);
+    ov.appendChild(card); document.body.appendChild(ov);
+    ov.onclick = (e) => { if (e.target === ov) chiudi(); };
+  }
   function _scriviCacheBaseWeb(v) { try { localStorage.setItem(GPS_BASE_KEY, (v || '').trim()); } catch (e) {} }
   function salvaIndirizzoBaseWeb(v) { _scriviCacheBaseWeb(v); scriviBaseSuDbWeb(v); }   // [GPS] cache locale subito + DB in background
 
@@ -6794,6 +6890,7 @@
   }
   function aggiornaCampoBaseProfilo(v) { const el = $('prof-base-input'); if (el) el.value = v || ''; }
   async function sincronizzaBaseWeb() {
+    sincronizzaNavigatoreWeb();   // [MAPPE] stesso momento, stessa tabella
     const dbVal = await leggiBaseDaDbWeb();     // null = offline/errore, '' = vuoto, valore = presente
     if (dbVal == null) return;                  // offline: tengo la cache locale
     const localVal = leggiIndirizzoBaseWeb();
@@ -7061,13 +7158,11 @@
       if (appMsT == null) return null;
       const oreT = (appMsT - Date.now()) / 3600000;
       if (oreT <= 0 || oreT > 24) return null;
-      const urlT = 'https://www.google.com/maps/dir/?api=1&origin=' + encodeURIComponent(base)
-        + '&destination=' + encodeURIComponent(String(a.luogo).trim()) + '&travelmode=transit';
       const link = document.createElement('a');
-      link.href = urlT; link.target = '_blank'; link.rel = 'noopener';
-      link.className = 'home-oggi-pil';
-      link.style.cssText = 'background:rgba(74,144,226,0.14); border:1px solid rgba(74,144,226,0.45); color:#9cc4f2; text-decoration:none;';
-      link.onclick = (e) => e.stopPropagation();
+      link.href = '#'; link.className = 'home-oggi-pil';
+      link.style.cssText = 'background:rgba(74,144,226,0.14); border:1px solid rgba(74,144,226,0.45); color:#9cc4f2; text-decoration:none; cursor:pointer;';
+      // [MAPPE] l'app di mappe la sceglie l'utente: l'URL non e' piu' deciso qui.
+      link.onclick = (e) => { e.preventDefault(); e.stopPropagation(); apriItinerarioMezziWeb(base, String(a.luogo).trim()); };
       link.innerHTML = '<span style="display:inline-flex;">' + svg(GPS_BUS, 13) + '</span><span>Itinerario</span>';
       return link;
     }
@@ -7104,14 +7199,11 @@
     const base = leggiIndirizzoBaseWeb();
     if (!base) return null;
 
-    const url = 'https://www.google.com/maps/dir/?api=1'
-      + '&origin=' + encodeURIComponent(base)
-      + '&destination=' + encodeURIComponent(String(a.luogo).trim())
-      + '&travelmode=transit';
     const link = document.createElement('a');
-    link.href = url; link.target = '_blank'; link.rel = 'noopener';
+    link.href = '#';
     link.setAttribute('data-gpsmezzi', chiaveStabileGpsWeb(a));
-    link.onclick = (e) => e.stopPropagation();
+    // [MAPPE] l'app di mappe la sceglie l'utente: l'URL non e' piu' deciso qui.
+    link.onclick = (e) => { e.preventDefault(); e.stopPropagation(); apriItinerarioMezziWeb(base, String(a.luogo).trim()); };
     link.style.cssText = 'margin-top:8px; display:inline-flex; align-items:center; gap:7px; background:rgba(74,144,226,0.14); border:1px solid rgba(74,144,226,0.45); color:#9cc4f2; border-radius:10px; padding:7px 12px; font-size:12.5px; font-weight:600; text-decoration:none;';
     link.innerHTML = '<span style="display:inline-flex;">' + svg(GPS_BUS, 15) + '</span><span>Itinerario coi mezzi su Maps</span>';
     return link;
@@ -7122,10 +7214,6 @@
   function mostraMezziSuMapsWeb(origine, dest) {
     const out = $('app-gps-verifica-out');
     if (!out) return;
-    const url = 'https://www.google.com/maps/dir/?api=1'
-      + '&origin=' + encodeURIComponent(origine)
-      + '&destination=' + encodeURIComponent(dest)
-      + '&travelmode=transit';
     out.style.color = '#c6d0e4';
     out.innerHTML =
       '<div style="display:flex; gap:9px; align-items:flex-start; padding:10px 11px; border-radius:11px; background:#0f1c2e; border:1px solid #22304f;">'
@@ -7133,9 +7221,12 @@
       + '<div style="flex:1;">'
         + '<div style="font-size:13px; font-weight:700; color:#c6d0e4;">L\'ora di partenza dipende dalla corsa: controlla l\'orario del bus o del treno.</div>'
         + '<div style="font-size:12px; color:#8aa0c8; margin-top:2px;">Corse, cambi e biglietti li trovi su Maps.</div>'
-        + '<a href="' + escapeHtml(url) + '" target="_blank" rel="noopener" style="display:inline-flex; align-items:center; gap:7px; margin-top:9px; background:rgba(74,144,226,0.16); border:1px solid rgba(74,144,226,0.55); color:#9cc4f2; border-radius:9px; padding:7px 13px; font-size:12.5px; font-weight:700; text-decoration:none;">'
-          + '<span style="display:inline-flex;">' + svg(GPS_BUS, 15) + '</span>Apri l\'itinerario in Maps</a>'
+        + '<button type="button" id="gps-apri-itinerario" style="display:inline-flex; align-items:center; gap:7px; margin-top:9px; background:rgba(74,144,226,0.16); border:1px solid rgba(74,144,226,0.55); color:#9cc4f2; border-radius:9px; padding:7px 13px; font-size:12.5px; font-weight:700; cursor:pointer; font-family:inherit;">'
+          + '<span style="display:inline-flex;">' + svg(GPS_BUS, 15) + '</span>Apri l\'itinerario</button>'
       + '</div></div>';
+    // [MAPPE] l'apertura passa dalla scelta dell'utente (Google o Yandex).
+    const bIt = $('gps-apri-itinerario');
+    if (bIt) bIt.onclick = () => apriItinerarioMezziWeb(origine, dest);
   }
 
   // [GPS] Versione compatta del badge per la Home: pillola inline + "Sono partito" solo
@@ -7277,6 +7368,42 @@
     $('prof-base-input').addEventListener('blur', () => setTimeout(() => chiudiSuggGen('prof-base-sugg'), 150));
     $('prof-base-salva').onclick = () => { salvaIndirizzoBaseWeb($('prof-base-input').value); homeToast('Indirizzo di partenza salvato'); };
     sincronizzaBaseWeb();   // [GPS] all'apertura del Profilo allinea il campo col DB
+
+    // [MAPPE] Navigatore preferito. Sta in impostazioni_utente come l'indirizzo base,
+    // quindi la scelta fatta qui vale anche sull'app (e viceversa).
+    const hNav = document.createElement('h3');
+    hNav.style.cssText = h.style.cssText;
+    hNav.innerHTML = '<span style="color:#888780;display:inline-flex;">' + svg(GPS_BUS, 16) + '</span> Navigatore preferito';
+    cont.appendChild(hNav);
+    const wNav = document.createElement('div');
+    wNav.style.cssText = 'margin:4px 0 12px; font-size:13px; color:#c9cde8;';
+    wNav.innerHTML =
+      '<p class="muted" style="font-size:13px; margin:0 0 8px;">Quale app di mappe usare per indirizzi e itinerari. In Russia conviene Yandex, in Europa occidentale Google.</p>' +
+      '<div id="prof-nav-opzioni" style="display:flex; flex-direction:column; gap:6px;"></div>';
+    cont.appendChild(wNav);
+    const disegnaNav = () => {
+      const box = $('prof-nav-opzioni'); if (!box) return;
+      // Chi non ha ancora scelto vede evidenziato "Chiedimelo ogni volta": e' cio' che
+      // l'app sta facendo. Sotto pero' resta 'nonscelto', perche' il primo popup deve
+      // ancora poter salvare la risposta.
+      const val = leggiNavigatoreWeb();
+      const mostrato = val === 'nonscelto' ? 'chiedi' : val;
+      box.innerHTML = '';
+      [['google', 'Google Maps'], ['yandex', 'Yandex Maps'], ['chiedi', 'Chiedimelo ogni volta']].forEach(([k, label]) => {
+        const sel = mostrato === k;
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.style.cssText = 'display:flex; align-items:center; gap:9px; text-align:left; padding:10px 12px; border-radius:10px; cursor:pointer; font-family:inherit; font-size:14px;'
+          + 'background:' + (sel ? '#12305a' : '#0f3460') + '; border:1px solid ' + (sel ? '#4f9deb' : '#2a2a4e') + '; color:' + (sel ? '#dbeafe' : '#c0c0d0') + ';';
+        // Radio disegnato in CSS: il set di icone del sito non ha il cerchio,
+        // e per un pallino non vale la pena aggiungere un SVG.
+        b.innerHTML = '<span style="flex:none; width:15px; height:15px; border-radius:50%; border:2px solid ' + (sel ? '#4f9deb' : '#4a5670') + '; background:' + (sel ? '#4f9deb' : 'transparent') + '; box-shadow:' + (sel ? 'inset 0 0 0 3px #12305a' : 'none') + ';"></span><span>' + label + '</span>';
+        b.onclick = () => { salvaNavigatoreWeb(k); disegnaNav(); homeToast('Navigatore aggiornato'); };
+        box.appendChild(b);
+      });
+    };
+    disegnaNav();
+    sincronizzaNavigatoreWeb().then(disegnaNav);   // allinea col DB e ridisegna
   }
 
 
