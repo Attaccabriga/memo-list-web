@@ -1552,7 +1552,7 @@
         sb.from('todos').select('id, completato'),
         sb.from('todos_scadenza').select('id, testo, data, ora, completato, categoria'),
         sb.from('scadenze').select('id, titolo, data, ora, completata, categoria, sottocategoria'),
-        sb.from('appuntamenti').select('id, client_id, titolo, data, ora, ora_fine, luogo, partito_at, mezzo, luogo_lat, luogo_lng'),   // [GPS] badge di partenza + [COORDINATE] mappe
+        sb.from('appuntamenti').select('id, client_id, titolo, data, ora, ora_fine, luogo, partito_at, mezzo, luogo_lat, luogo_lng, durata_stimata_min, durata_stimata_origine, durata_stimata_per'),   // [GPS] badge + [COORDINATE] mappe + [STIMA DB] pillola di percorrenza
         sb.from('liste_spesa').select('id'),
       ]);
     } catch (e) { return; }
@@ -1612,7 +1612,7 @@
       const [mRes, sRes, aRes] = await Promise.all([
         sb.from('todos_scadenza').select('id, testo, data, ora, completato, categoria'),
         sb.from('scadenze').select('id, titolo, data, ora, completata, categoria, sottocategoria'),
-        sb.from('appuntamenti').select('id, client_id, titolo, data, ora, ora_fine, luogo, partito_at, mezzo, luogo_lat, luogo_lng'),   // [GPS] badge di partenza + [COORDINATE] mappe
+        sb.from('appuntamenti').select('id, client_id, titolo, data, ora, ora_fine, luogo, partito_at, mezzo, luogo_lat, luogo_lng, durata_stimata_min, durata_stimata_origine, durata_stimata_per'),   // [GPS] badge + [COORDINATE] mappe + [STIMA DB] pillola di percorrenza
       ]);
       if (!oggiBox.isConnected) return;
       const memo = (mRes && mRes.data) || [], scad = (sRes && sRes.data) || [], app = (aRes && aRes.data) || [];
@@ -7013,10 +7013,23 @@
   }
 
   // Chiama la Edge Function travel-time (la stessa dell'app), dal client web.
-  async function calcolaPercorrenzaWeb(origin, destination, mezzo) {
+  // [ORARIO] Il sito era rimasto indietro: chiedeva a Google la percorrenza senza dire
+  // PER QUANDO, e la Edge Function ripiegava su 'now'. Verificando sabato sera un
+  // appuntamento di lunedi' mattina si otteneva il traffico del sabato sera — la
+  // risposta a una domanda che nessuno aveva fatto. Sull'app e sul server era gia'
+  // stato corretto; qui no. Stessa cura, stessa chiamata, nessun costo in piu':
+  // departure_time futuro e traffic_model non si pagano.
+  // opts.partenzaMs e' in MILLISECONDI (come Date.now()); la conversione a secondi,
+  // che e' quello che vuole Google, la fa questa funzione — come nell'app.
+  async function calcolaPercorrenzaWeb(origin, destination, mezzo, opts) {
     const mode = MEZZI_GPS_WEB[mezzo] ? mezzo : 'driving';
+    const corpo = { origin, destination, mode };
+    if (opts && typeof opts.partenzaMs === 'number' && isFinite(opts.partenzaMs)) {
+      corpo.departureTime = Math.floor(opts.partenzaMs / 1000);
+      corpo.trafficModel = opts.trafficModel || 'best_guess';
+    }
     try {
-      const { data, error } = await sb.functions.invoke('travel-time', { body: { origin, destination, mode } });
+      const { data, error } = await sb.functions.invoke('travel-time', { body: corpo });
       if (error) return { ok: false, motivo: error.message || 'errore' };
       if (!data || data.status !== 'OK' || typeof data.durataTrafficoSec !== 'number') {
         const st = (data && (data.status || data.error)) || 'errore';
@@ -7457,6 +7470,54 @@
   // e' sbagliato, e va cancellato: meglio nessuna coordinata che una che porta
   // con sicurezza nel posto di ieri).
   let gpsLuogoCaricatoWeb = null;
+  // [STIMA DB] Gemello di gpsLuogoCaricatoWeb, per data e ora: adesso la stima e' legata
+  // a un orario preciso, quindi spostare l'appuntamento la invalida. Senza questo,
+  // aprire un appuntamento in modifica (che imposta data e ora) sembrerebbe uno
+  // spostamento e farebbe partire un ricalcolo non richiesto.
+  let gpsDataOraCaricataWeb = null;
+
+  // [ORARIO] Data e ora dell'appuntamento in scrittura, in millisecondi. E' il momento
+  // per cui chiedere il traffico. null se il form non ha ancora data od ora: in quel
+  // caso la Edge Function ripiega su 'now', come faceva prima. Nessuna regressione.
+  function partenzaAppWeb() {
+    const dataW = $('app-data') ? $('app-data').value : '';
+    const ora = $('app-ora') ? ($('app-ora').value || '') : '';
+    if (!dataW || !ora) return null;
+    return appuntamentoMsWeb({ data: dataWebToApp(dataW), ora: ora });
+  }
+
+  // [STIMA DB] Una stima porta con se' QUANDO e' stata chiesta ('il') e PER QUALE data e
+  // ora vale ('per'). Sono due cose diverse: una stima chiesta un minuto fa per le 08:30
+  // e' freschissima e del tutto inutile se l'appuntamento e' alle 18:00.
+  function nuovaStimaWeb(min, origine) {
+    const dataW = $('app-data') ? $('app-data').value : '';
+    const ora = $('app-ora') ? ($('app-ora').value || '') : '';
+    return {
+      min: min,
+      origine: origine,
+      il: new Date().toISOString(),
+      per: (dataW && ora) ? (dataWebToApp(dataW) + ' ' + ora) : null
+    };
+  }
+
+  // [STIMA DB] Vocabolario unico con l'app: base | gps | prec | digitato.
+  // 'indirizzo' e' lo storico di questo sito e vale 'base': le stime gia' nel browser
+  // non devono cambiare significato da sole.
+  function etichettaOrigineWeb(origine) {
+    if (origine === 'gps') return 'da dove eri';
+    if (origine === 'prec') return 'dall\'appuntamento prima';
+    if (origine === 'digitato') return 'da un indirizzo digitato';
+    return 'dalla base';
+  }
+
+  // [STIMA DB] La regola, in un posto solo: il numero vale per la data e l'ora per cui e'
+  // stato calcolato, e per nessun'altra. Senza 'per' (stime vecchie, o quelle nel
+  // cassetto del browser) la risposta onesta e' "non lo so": da verificare.
+  function stimaDaVerificareWeb(st, data, ora) {
+    if (!st) return false;
+    if (!st.per) return true;
+    return st.per !== ((data || '') + ' ' + (ora || ''));
+  }
 
   function idrataStimeWeb() {
     if (gpsStimeIdratateWeb) return;
@@ -7501,15 +7562,17 @@
     if (!prec) { if (out) { out.style.color = '#8aa0c8'; out.textContent = 'Nessun appuntamento (con luogo) prima di questo, quel giorno'; } return; }
     if (out) { out.style.color = '#8aa0c8'; out.textContent = 'Calcolo…'; }
     if (gpsMezzoCorrenteWeb === 'transit') { mostraMezziSuMapsWeb(prec.luogo, dest); return; }   // [GPS] coi mezzi si va su Maps
-    const r = await calcolaPercorrenzaWeb(prec.luogo, dest, gpsMezzoCorrenteWeb);
+    // [ORARIO] Qui l'ora di partenza la sappiamo ESATTA: e' la fine dell'appuntamento
+    // precedente. E' il caso in cui la previsione e' piu' affidabile di tutti.
+    const partenzaPrecMs = appuntamentoMsWeb({ data: prec.data, ora: prec.ora_fine || prec.ora });
+    const r = await calcolaPercorrenzaWeb(prec.luogo, dest, gpsMezzoCorrenteWeb, { partenzaMs: partenzaPrecMs, trafficModel: 'best_guess' });
     if (r.ok && r.destLat != null) gpsCoordDestWeb = { lat: r.destLat, lng: r.destLng };   // [COORDINATE]
     if (!out) return;
     if (!r.ok) { out.style.color = '#e2564b'; out.textContent = 'Percorrenza non disponibile (' + r.motivo + ')'; return; }
     const min = Math.round(r.durataTrafficoSec / 60);
-    gpsStimaCorrenteWeb = { min: min, origine: 'prec' };
+    gpsStimaCorrenteWeb = nuovaStimaWeb(min, 'prec');
     const appMs = appuntamentoMsWeb({ data: dataApp, ora: ora });
-    const partenzaMs = appuntamentoMsWeb({ data: prec.data, ora: prec.ora_fine || prec.ora });
-    const disponibili = (appMs != null && partenzaMs != null) ? Math.round((appMs - partenzaMs) / 60000) : null;
+    const disponibili = (appMs != null && partenzaPrecMs != null) ? Math.round((appMs - partenzaPrecMs) / 60000) : null;
     const nomePrec = '«' + (prec.titolo || 'appuntamento prima') + '»';
     if (disponibili != null && min > disponibili) {
       out.style.color = '#e2564b';
@@ -7529,12 +7592,20 @@
     if (!a || !a.luogo) return null;
     const st = statoAppuntamento(a);
     if (st && st.stato === 'passato') return null;
-    const s = gpsStimeWeb[chiaveStabileGpsWeb(a)];
+    // [STIMA DB] Prima il campo dell'appuntamento (lo vede anche l'app), poi il vecchio
+    // cassetto del browser come ripiego: chi ha gia' stime qui non le perde.
+    const s = (typeof a.durata_stimata_min === 'number')
+      ? { min: a.durata_stimata_min, origine: a.durata_stimata_origine || 'base', per: a.durata_stimata_per || null }
+      : gpsStimeWeb[chiaveStabileGpsWeb(a)];
     if (!s || typeof s.min !== 'number') return null;
-    const daDove = s.origine === 'prec' ? 'dall\'appuntamento prima' : 'dall\'indirizzo di partenza';
+    const daDove = etichettaOrigineWeb(s.origine);
+    // [STIMA DB] Numero non piu' pertinente: si spegne invece di sparire. Solo il colore,
+    // niente bordo tratteggiato: sull'app 'dashed' con gli angoli arrotondati su iOS
+    // viene disegnato male, e le due gambe devono assomigliarsi.
+    const dubbia = stimaDaVerificareWeb(s, a.data, a.ora);
     const box = document.createElement('div');
-    box.style.cssText = 'margin-top:8px; display:inline-flex; align-items:center; gap:7px; background:rgba(79,157,235,0.12); border:1px solid rgba(79,157,235,0.32); border-radius:10px; padding:7px 11px; font-size:12px; color:#bcd4f2;';
-    box.innerHTML = '<span style="display:inline-flex; color:#7ea9dd;">' + svg(GPS_CAR, 15) + '</span><span>≈ ' + formattaDurataWeb(s.min) + ' di viaggio · ' + daDove + '</span>';
+    box.style.cssText = 'margin-top:8px; display:inline-flex; align-items:center; gap:7px; background:' + (dubbia ? 'rgba(148,163,184,0.07)' : 'rgba(79,157,235,0.12)') + '; border:1px solid ' + (dubbia ? 'rgba(148,163,184,0.26)' : 'rgba(79,157,235,0.32)') + '; border-radius:10px; padding:7px 11px; font-size:12px; color:' + (dubbia ? '#94a3b8' : '#bcd4f2') + ';';
+    box.innerHTML = '<span style="display:inline-flex; color:' + (dubbia ? '#8595ab' : '#7ea9dd') + ';">' + svg(GPS_CAR, 15) + '</span><span>≈ ' + formattaDurataWeb(s.min) + ' di viaggio · ' + daDove + (dubbia ? ' · da verificare' : '') + '</span>';
     return box;
   }
 
@@ -7579,10 +7650,11 @@
     if (!base) { homeToast('Imposta il tuo indirizzo base nel Profilo'); return; }
     if (gpsMezzoCorrenteWeb === 'transit') { mostraMezziSuMapsWeb(base, dest); return; }   // [GPS] coi mezzi si va su Maps
     if (out) { out.style.color = '#8aa0c8'; out.textContent = 'Calcolo…'; }
-    const r = await calcolaPercorrenzaWeb(base, dest, gpsMezzoCorrenteWeb);
+    // [ORARIO] il traffico da chiedere e' quello dell'ora dell'appuntamento.
+    const r = await calcolaPercorrenzaWeb(base, dest, gpsMezzoCorrenteWeb, { partenzaMs: partenzaAppWeb(), trafficModel: 'best_guess' });
     if (r.ok && r.destLat != null) gpsCoordDestWeb = { lat: r.destLat, lng: r.destLng };   // [COORDINATE]
     if (!out) return;
-    if (r.ok) { const min = Math.round(r.durataTrafficoSec / 60); gpsStimaCorrenteWeb = { min: min, origine: 'indirizzo' }; out.style.color = '#9cc4f2'; out.textContent = '≈ ' + formattaDurataWeb(min) + ' di viaggio · dalla base'; }
+    if (r.ok) { const min = Math.round(r.durataTrafficoSec / 60); gpsStimaCorrenteWeb = nuovaStimaWeb(min, 'base'); out.style.color = '#9cc4f2'; out.textContent = '≈ ' + formattaDurataWeb(min) + ' di viaggio · dalla base'; }
     else { out.style.color = '#e2564b'; out.textContent = 'Percorrenza non disponibile (' + r.motivo + ')'; }
   }
   async function verificaDaDigitatoWeb() {
@@ -7593,10 +7665,12 @@
     if (!origin) { homeToast('Cerca o digita un punto di partenza'); return; }
     if (gpsMezzoCorrenteWeb === 'transit') { mostraMezziSuMapsWeb(origin, dest); return; }   // [GPS] coi mezzi si va su Maps
     if (out) { out.style.color = '#8aa0c8'; out.textContent = 'Calcolo…'; }
-    const r = await calcolaPercorrenzaWeb(origin, dest, gpsMezzoCorrenteWeb);
+    const r = await calcolaPercorrenzaWeb(origin, dest, gpsMezzoCorrenteWeb, { partenzaMs: partenzaAppWeb(), trafficModel: 'best_guess' });
     if (r.ok && r.destLat != null) gpsCoordDestWeb = { lat: r.destLat, lng: r.destLng };   // [COORDINATE]
     if (!out) return;
-    if (r.ok) { const min = Math.round(r.durataTrafficoSec / 60); gpsStimaCorrenteWeb = { min: min, origine: 'indirizzo' }; out.style.color = '#9cc4f2'; out.textContent = '≈ ' + formattaDurataWeb(min) + ' di viaggio · dall\'indirizzo digitato'; }
+    // [STIMA DB] 'digitato', non piu' 'indirizzo': la stessa parola valeva sia per la
+    // base sia per un indirizzo scritto a mano, e ora questo campo lo legge anche l'app.
+    if (r.ok) { const min = Math.round(r.durataTrafficoSec / 60); gpsStimaCorrenteWeb = nuovaStimaWeb(min, 'digitato'); out.style.color = '#9cc4f2'; out.textContent = '≈ ' + formattaDurataWeb(min) + ' di viaggio · dall\'indirizzo digitato'; }
     else { out.style.color = '#e2564b'; out.textContent = 'Percorrenza non disponibile (' + r.motivo + ')'; }
   }
 
@@ -7631,6 +7705,7 @@
     if ($('app-parti-da')) $('app-parti-da').value = '';   // [GPS] campo partenza vuoto: se resta vuoto la verifica parte dalla base
     if ($('app-gps-verifica-out')) $('app-gps-verifica-out').textContent = '';
     gpsStimaCorrenteWeb = null;
+    gpsDataOraCaricataWeb = null;   // [STIMA DB] form nuovo: nessuna data/ora ereditata
     gpsCoordDestWeb = null;   // [COORDINATE] cambiato contesto: il punto vecchio non vale piu'
     gpsLuogoCaricatoWeb = null;   // [COORDINATE] form nuovo: nessun indirizzo di partenza
     selMezzoGpsWeb('driving');   // [GPS] nuovo appuntamento: si riparte dall'auto
@@ -8052,7 +8127,7 @@
   async function caricaAppuntamenti() {
     const cont = $('app-item-container'); cont.innerHTML = '<p class="muted">Caricamento…</p>';
     const { data, error } = await sb.from('appuntamenti')
-      .select('id, client_id, titolo, data, ora, ora_fine, luogo, note, anticipo, datanotifica, oranotifica, ripetizione, giornomese, fine_tipo, fine_data, fine_conteggio, serie_client_id, condiviso, user_id, partito_at, mezzo, luogo_lat, luogo_lng')   // [COORDINATE] servono ad aprire le mappe sul punto esatto
+      .select('id, client_id, titolo, data, ora, ora_fine, luogo, note, anticipo, datanotifica, oranotifica, ripetizione, giornomese, fine_tipo, fine_data, fine_conteggio, serie_client_id, condiviso, user_id, partito_at, mezzo, luogo_lat, luogo_lng, durata_stimata_min, durata_stimata_origine, durata_stimata_il, durata_stimata_per')   // [COORDINATE] mappe + [STIMA DB] la stima e' un dato dell'appuntamento
       .order('id', { ascending: true });
     if (error) { cont.innerHTML = '<p class="err">Errore: ' + error.message + '</p>'; return; }
     appItemsCaricati = data || [];
@@ -8086,8 +8161,17 @@
       const patchCoordWeb = gpsCoordDestWeb
         ? { luogo_lat: gpsCoordDestWeb.lat, luogo_lng: gpsCoordDestWeb.lng }
         : (luogoCambiatoWeb ? { luogo_lat: null, luogo_lng: null } : {});
+      // [STIMA DB] gpsStimaCorrenteWeb qui e' gia' popolata da apriModificaApp con quello
+      // che c'era sul database: aprire e risalvare senza verificare NON cancella piu' il
+      // numero. E' la stessa cura data alle coordinate dopo il bug del 15 agosto.
+      const patchStimaWeb = {
+        durata_stimata_min: gpsStimaCorrenteWeb ? gpsStimaCorrenteWeb.min : null,
+        durata_stimata_origine: gpsStimaCorrenteWeb ? gpsStimaCorrenteWeb.origine : null,
+        durata_stimata_il: gpsStimaCorrenteWeb ? (gpsStimaCorrenteWeb.il || new Date().toISOString()) : null,
+        durata_stimata_per: gpsStimaCorrenteWeb ? (gpsStimaCorrenteWeb.per || null) : null
+      };
       const { error } = await sb.from('appuntamenti').update({ titolo, data, ora, ora_fine, luogo, note, mezzo: gpsMezzoCorrenteWeb,
-        ...patchCoordWeb,
+        ...patchCoordWeb, ...patchStimaWeb,
         anticipo: prom.anticipo, datanotifica: prom.datanotifica, oranotifica: prom.oranotifica }).eq('id', idAppInModifica);
       if (error) { homeToast('Errore modifica appuntamento: ' + error.message); return; }
       await flushPendingAllegati(appEditClientId);
@@ -8101,6 +8185,10 @@
           client_id: cidNuovo, titolo, data, ora, ora_fine, luogo, note, mezzo: gpsMezzoCorrenteWeb,
           luogo_lat: gpsCoordDestWeb ? gpsCoordDestWeb.lat : null,   // [COORDINATE]
           luogo_lng: gpsCoordDestWeb ? gpsCoordDestWeb.lng : null,
+          durata_stimata_min: gpsStimaCorrenteWeb ? gpsStimaCorrenteWeb.min : null,   // [STIMA DB]
+          durata_stimata_origine: gpsStimaCorrenteWeb ? gpsStimaCorrenteWeb.origine : null,
+          durata_stimata_il: gpsStimaCorrenteWeb ? gpsStimaCorrenteWeb.il : null,
+          durata_stimata_per: gpsStimaCorrenteWeb ? gpsStimaCorrenteWeb.per : null,
           anticipo: prom.anticipo, datanotifica: prom.datanotifica, oranotifica: prom.oranotifica,
           ripetizione: 'nessuna', giornomese: null, fine_tipo: 'nessuna', fine_data: null, fine_conteggio: null,
           serie_client_id: null, user_id: userId
@@ -8144,7 +8232,18 @@
     selMezzoGpsWeb(a.mezzo || 'driving');   // [GPS] riprende il mezzo scelto per questo appuntamento
     if ($('app-parti-da')) $('app-parti-da').value = '';   // [GPS] campo partenza vuoto: se resta vuoto la verifica parte dalla base
     if ($('app-gps-verifica-out')) $('app-gps-verifica-out').textContent = '';
-    gpsStimaCorrenteWeb = null;
+    // [STIMA DB] La stima salvata torna nel form. Senza questa riga, aprire e risalvare
+    // senza riverificare scriverebbe null e cancellerebbe il numero.
+    gpsStimaCorrenteWeb = (typeof a.durata_stimata_min === 'number')
+      ? { min: a.durata_stimata_min, origine: a.durata_stimata_origine || 'base', il: a.durata_stimata_il || null, per: a.durata_stimata_per || null }
+      : null;
+    gpsDataOraCaricataWeb = (a.data || '') + ' ' + (a.ora || '');
+    if (gpsStimaCorrenteWeb && $('app-gps-verifica-out')) {
+      const dub = stimaDaVerificareWeb(gpsStimaCorrenteWeb, a.data, a.ora);
+      $('app-gps-verifica-out').style.color = dub ? '#94a3b8' : '#9cc4f2';
+      $('app-gps-verifica-out').textContent = '≈ ' + formattaDurataWeb(gpsStimaCorrenteWeb.min) + ' di viaggio · '
+        + etichettaOrigineWeb(gpsStimaCorrenteWeb.origine) + (dub ? ' · da verificare' : ' · stima salvata');
+    }
     gpsCoordDestWeb = null;   // [COORDINATE] cambiato contesto: il punto vecchio non vale piu'
     gpsLuogoCaricatoWeb = a.luogo || '';   // [COORDINATE] indirizzo di partenza di questa modifica
     resetOrigBtnGpsWeb(); if ($('app-parti-da-wrap')) $('app-parti-da-wrap').style.display = 'none';
@@ -8606,6 +8705,29 @@
   $('app-data').addEventListener('input', aggiornaGiornoApp);
   $('app-data').addEventListener('change', aggiornaGiornoApp);
   $('app-ora').addEventListener('blur', autoOraFineApp);   // [FIX ORARIO] su 'blur' e non 'change': evita l'auto-fine su valori parziali mentre digiti (es. 10:03 -> 11:03)
+  // [STIMA DB] Sposti l'appuntamento dopo aver verificato? Il numero vecchio risponde a
+  // un'altra domanda: lo rifacciamo da soli. Paletti, perche' nel caso normale non costi
+  // nulla: solo se avevi gia' verificato; mai al caricamento del form; niente coi mezzi;
+  // e su 'blur' come qui sopra, che digitare 1-0-:-3-0 non spari quattro richieste.
+  // Se il ricalcolo non riesce il numero NON si perde: ci pensa 'per' a segnarlo.
+  function ricalcolaStimaSeSpostatoWeb() {
+    if (!gpsStimaCorrenteWeb) return;
+    if (gpsMezzoCorrenteWeb === 'transit') return;
+    const dataW = $('app-data').value, ora = $('app-ora').value || '';
+    if (!dataW || !ora) return;
+    if (!($('app-luogo').value || '').trim()) return;
+    const chiave = dataWebToApp(dataW) + ' ' + ora;
+    if (chiave === gpsDataOraCaricataWeb) return;
+    gpsDataOraCaricataWeb = chiave;
+    const orig = gpsStimaCorrenteWeb.origine;
+    if (orig === 'prec') { verificaDaApptPrimaWeb(); return; }
+    // 'digitato' senza il campo di partenza compilato (succede riaprendo una modifica):
+    // non chiediamo niente e non infastidiamo con un avviso — il numero resta, segnato.
+    if (orig === 'digitato') { if (($('app-parti-da').value || '').trim()) verificaDaDigitatoWeb(); return; }
+    verificaDaBaseWeb();
+  }
+  $('app-data').addEventListener('change', ricalcolaStimaSeSpostatoWeb);
+  $('app-ora').addEventListener('blur', ricalcolaStimaSeSpostatoWeb);
   $('app-luogo').addEventListener('input', onLuogoInput);
   $('app-luogo').addEventListener('blur', () => setTimeout(chiudiSuggLuogo, 150));
   // [GPS] campo "Parti da" (autocomplete) + verifica percorrenza in creazione
