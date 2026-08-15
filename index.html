@@ -6822,6 +6822,25 @@
       : 'https://www.google.com/maps/dir/?api=1&origin=' + o + '&destination=' + d + '&travelmode=transit';
   }
 
+  function urlPostoWeb(nav, luogo) {
+    const q = encodeURIComponent(String(luogo || '').trim());
+    return nav === 'yandex'
+      ? 'https://maps.yandex.com/?text=' + q
+      : 'https://www.google.com/maps/search/?api=1&query=' + q;
+  }
+
+  // Apre un indirizzo sulle mappe (dal click sul luogo di un appuntamento).
+  // Sull'app si poteva gia' fare col tap; sul sito mancava del tutto.
+  function apriPostoWeb(luogo) {
+    if (!luogo) return;
+    const pref = leggiNavigatoreWeb();
+    if (pref === 'google' || pref === 'yandex') {
+      window.open(urlPostoWeb(pref, luogo), '_blank', 'noopener');
+      return;
+    }
+    popupNavigatoreWeb(pref === 'nonscelto', (nav) => urlPostoWeb(nav, luogo));
+  }
+
   // Apre l'itinerario coi mezzi rispettando la preferenza. Da chiamare DENTRO un click.
   // Se la preferenza c'e' apre subito; altrimenti mostra il popup, e l'apertura avviene
   // nel click del bottone del popup (di nuovo un gesto utente: niente blocco del browser).
@@ -7901,7 +7920,9 @@
     let orario = a.ora ? (a.ora + (a.ora_fine ? '–' + a.ora_fine : '')) : (a.ora_fine || '');
     if (terminaGiornoDopoWeb(a.ora, a.ora_fine)) orario += ' +1 giorno';
     if (orario) parti.push(iconTxt(IC.clock, orario));
-    if (a.luogo) parti.push(iconTxt(IC.mapPin, a.luogo));
+    // [MAPPE] l'indirizzo si apre sulle mappe, come nell'app. Colorato e col cursore
+    // a manina: se non si vede che e' cliccabile, tanto vale che non lo sia.
+    if (a.luogo) parti.push('<span class="app-luogo-apri" style="cursor:pointer; color:#4f9deb; text-decoration:underline; text-underline-offset:2px;" title="Apri sulle mappe">' + iconTxt(IC.mapPin, a.luogo) + '</span>');
     if (a.note) parti.push('<span style="vertical-align:middle;">' + escapeHtml(a.note) + '</span>');
     if (a.ripetizione && a.ripetizione !== 'nessuna') parti.push('<span style="color:#EF9F27; vertical-align:middle;">↻ ' + escapeHtml(labelRipApp(a)) + '</span>');
     const promSummary = riassuntoPromemApp(a);
@@ -7909,6 +7930,8 @@
     if (parti.length) {
       const sub = document.createElement('div'); sub.className = 'muted'; sub.style.fontSize = '12px'; sub.style.marginTop = '3px';
       sub.innerHTML = parti.join('<span style="opacity:.5;">&nbsp;&nbsp;·&nbsp;&nbsp;</span>');
+      const elLuogo = sub.querySelector('.app-luogo-apri');
+      if (elLuogo) elLuogo.onclick = (e) => { e.preventDefault(); e.stopPropagation(); apriPostoWeb(a.luogo); };
       mid.appendChild(sub);
     }
     // [GPS] badge percorrenza di oggi (4 stati + "Sono partito")
