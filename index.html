@@ -1552,7 +1552,7 @@
         sb.from('todos').select('id, completato'),
         sb.from('todos_scadenza').select('id, testo, data, ora, completato, categoria'),
         sb.from('scadenze').select('id, titolo, data, ora, completata, categoria, sottocategoria'),
-        sb.from('appuntamenti').select('id, client_id, titolo, data, ora, ora_fine, luogo, partito_at, mezzo'),   // [GPS] servono al badge di partenza
+        sb.from('appuntamenti').select('id, client_id, titolo, data, ora, ora_fine, luogo, partito_at, mezzo, luogo_lat, luogo_lng'),   // [GPS] badge di partenza + [COORDINATE] mappe
         sb.from('liste_spesa').select('id'),
       ]);
     } catch (e) { return; }
@@ -1612,7 +1612,7 @@
       const [mRes, sRes, aRes] = await Promise.all([
         sb.from('todos_scadenza').select('id, testo, data, ora, completato, categoria'),
         sb.from('scadenze').select('id, titolo, data, ora, completata, categoria, sottocategoria'),
-        sb.from('appuntamenti').select('id, client_id, titolo, data, ora, ora_fine, luogo, partito_at, mezzo'),   // [GPS] servono al badge di partenza
+        sb.from('appuntamenti').select('id, client_id, titolo, data, ora, ora_fine, luogo, partito_at, mezzo, luogo_lat, luogo_lng'),   // [GPS] badge di partenza + [COORDINATE] mappe
       ]);
       if (!oggiBox.isConnected) return;
       const memo = (mRes && mRes.data) || [], scad = (sRes && sRes.data) || [], app = (aRes && aRes.data) || [];
@@ -6815,24 +6815,37 @@
   // Gli URL. Per Yandex la tilde che separa i due punti NON va codificata,
   // altrimenti non riconosce la destinazione. (rtt: mt = mezzi pubblici)
   function urlItinerarioMezziWeb(nav, origine, dest) {
-    const o = encodeURIComponent(String(origine || '').trim());
-    const d = encodeURIComponent(String(dest || '').trim());
+    if (typeof origine === 'string') origine = { testo: origine };
+    if (typeof dest === 'string') dest = { testo: dest };
+    const o = perGoogleWeb(origine);   // rtext di Yandex vuole lat,lng: stesso formato di Google
+    const d = perGoogleWeb(dest);
     return nav === 'yandex'
       ? 'https://yandex.com/maps/?rtext=' + o + '~' + d + '&rtt=mt'
       : 'https://www.google.com/maps/dir/?api=1&origin=' + o + '&destination=' + d + '&travelmode=transit';
   }
 
-  function urlPostoWeb(nav, luogo) {
-    const q = encodeURIComponent(String(luogo || '').trim());
-    return nav === 'yandex'
-      ? 'https://maps.yandex.com/?text=' + q
-      : 'https://www.google.com/maps/search/?api=1&query=' + q;
+  // ⚠️ Yandex usa DUE ORDINI DIVERSI: rtext vuole lat,lng mentre ll/pt vogliono
+  // lng,lat (invertito). Verificato dal vivo il 14-15/8. Non "correggere".
+  function haCoordWeb(p) { return p && typeof p.lat === 'number' && typeof p.lng === 'number'; }
+  function perGoogleWeb(p) { return encodeURIComponent(haCoordWeb(p) ? (p.lat + ',' + p.lng) : String((p && p.testo) || '').trim()); }
+
+  function urlPostoWeb(nav, p) {
+    // Accetta una stringa (uso storico) o un punto con le coordinate.
+    if (typeof p === 'string') p = { testo: p };
+    if (nav === 'yandex') {
+      if (haCoordWeb(p)) {
+        const ll = p.lng + ',' + p.lat;   // <- lng PRIMA
+        return 'https://yandex.com/maps/?ll=' + encodeURIComponent(ll) + '&z=17&pt=' + encodeURIComponent(ll);
+      }
+      return 'https://maps.yandex.com/?text=' + encodeURIComponent(String((p && p.testo) || '').trim());
+    }
+    return 'https://www.google.com/maps/search/?api=1&query=' + perGoogleWeb(p);
   }
 
   // Apre un indirizzo sulle mappe (dal click sul luogo di un appuntamento).
   // Sull'app si poteva gia' fare col tap; sul sito mancava del tutto.
   function apriPostoWeb(luogo) {
-    if (!luogo) return;
+    if (!luogo || (typeof luogo === 'object' && !luogo.testo && !haCoordWeb(luogo))) return;
     const pref = leggiNavigatoreWeb();
     if (pref === 'google' || pref === 'yandex') {
       window.open(urlPostoWeb(pref, luogo), '_blank', 'noopener');
@@ -7015,7 +7028,10 @@
         }
         return { ok: false, motivo: st };
       }
-      return { ok: true, durataTrafficoSec: data.durataTrafficoSec };
+      // [COORDINATE] Google le regala insieme alla durata: finora le buttavamo.
+      return { ok: true, durataTrafficoSec: data.durataTrafficoSec,
+               destLat: typeof data.destLat === 'number' ? data.destLat : null,
+               destLng: typeof data.destLng === 'number' ? data.destLng : null };
     } catch (e) { return { ok: false, motivo: (e && e.message) || 'errore' }; }
   }
 
@@ -7181,7 +7197,7 @@
       link.href = '#'; link.className = 'home-oggi-pil';
       link.style.cssText = 'background:rgba(74,144,226,0.14); border:1px solid rgba(74,144,226,0.45); color:#9cc4f2; text-decoration:none; cursor:pointer;';
       // [MAPPE] l'app di mappe la sceglie l'utente: l'URL non e' piu' deciso qui.
-      link.onclick = (e) => { e.preventDefault(); e.stopPropagation(); apriItinerarioMezziWeb(base, String(a.luogo).trim()); };
+      link.onclick = (e) => { e.preventDefault(); e.stopPropagation(); apriItinerarioMezziWeb(base, { testo: String(a.luogo).trim(), lat: a.luogo_lat, lng: a.luogo_lng }); };
       link.innerHTML = '<span style="display:inline-flex;">' + svg(GPS_BUS, 13) + '</span><span>Itinerario</span>';
       return link;
     }
@@ -7222,7 +7238,7 @@
     link.href = '#';
     link.setAttribute('data-gpsmezzi', chiaveStabileGpsWeb(a));
     // [MAPPE] l'app di mappe la sceglie l'utente: l'URL non e' piu' deciso qui.
-    link.onclick = (e) => { e.preventDefault(); e.stopPropagation(); apriItinerarioMezziWeb(base, String(a.luogo).trim()); };
+    link.onclick = (e) => { e.preventDefault(); e.stopPropagation(); apriItinerarioMezziWeb(base, { testo: String(a.luogo).trim(), lat: a.luogo_lat, lng: a.luogo_lng }); };
     link.style.cssText = 'margin-top:8px; display:inline-flex; align-items:center; gap:7px; background:rgba(74,144,226,0.14); border:1px solid rgba(74,144,226,0.45); color:#9cc4f2; border-radius:10px; padding:7px 12px; font-size:12.5px; font-weight:600; text-decoration:none;';
     link.innerHTML = '<span style="display:inline-flex;">' + svg(GPS_BUS, 15) + '</span><span>Itinerario coi mezzi su Maps</span>';
     return link;
@@ -7431,6 +7447,10 @@
   let gpsStimeWeb = {};            // { keyStabile: { min, origine } } stime congelate (persistenti)
   let gpsStimeIdratateWeb = false;
   let gpsStimaCorrenteWeb = null;  // { min, origine } dell'ultima verifica nel form corrente
+  // [COORDINATE] punto esatto della destinazione dell'ultima verifica: si salva
+  // con l'appuntamento e serve ad aprire le mappe sul posto giusto invece di far
+  // ricercare l'indirizzo a parole (Yandex, in Italia, sbaglia comune).
+  let gpsCoordDestWeb = null;      // { lat, lng } oppure null
 
   function idrataStimeWeb() {
     if (gpsStimeIdratateWeb) return;
@@ -7476,6 +7496,7 @@
     if (out) { out.style.color = '#8aa0c8'; out.textContent = 'Calcolo…'; }
     if (gpsMezzoCorrenteWeb === 'transit') { mostraMezziSuMapsWeb(prec.luogo, dest); return; }   // [GPS] coi mezzi si va su Maps
     const r = await calcolaPercorrenzaWeb(prec.luogo, dest, gpsMezzoCorrenteWeb);
+    if (r.ok && r.destLat != null) gpsCoordDestWeb = { lat: r.destLat, lng: r.destLng };   // [COORDINATE]
     if (!out) return;
     if (!r.ok) { out.style.color = '#e2564b'; out.textContent = 'Percorrenza non disponibile (' + r.motivo + ')'; return; }
     const min = Math.round(r.durataTrafficoSec / 60);
@@ -7525,6 +7546,7 @@
     const nota = $('app-mezzo-nota'); if (nota) nota.style.display = (m === 'transit' ? 'block' : 'none');
     // cambiare mezzo invalida la stima gia' mostrata: i tempi non sono piu' quelli
     gpsStimaCorrenteWeb = null;
+    gpsCoordDestWeb = null;   // [COORDINATE] cambiato contesto: il punto vecchio non vale piu'
     const out = $('app-gps-verifica-out'); if (out) out.textContent = '';
     resetOrigBtnGpsWeb();
   }
@@ -7552,6 +7574,7 @@
     if (gpsMezzoCorrenteWeb === 'transit') { mostraMezziSuMapsWeb(base, dest); return; }   // [GPS] coi mezzi si va su Maps
     if (out) { out.style.color = '#8aa0c8'; out.textContent = 'Calcolo…'; }
     const r = await calcolaPercorrenzaWeb(base, dest, gpsMezzoCorrenteWeb);
+    if (r.ok && r.destLat != null) gpsCoordDestWeb = { lat: r.destLat, lng: r.destLng };   // [COORDINATE]
     if (!out) return;
     if (r.ok) { const min = Math.round(r.durataTrafficoSec / 60); gpsStimaCorrenteWeb = { min: min, origine: 'indirizzo' }; out.style.color = '#9cc4f2'; out.textContent = '≈ ' + formattaDurataWeb(min) + ' di viaggio · dalla base'; }
     else { out.style.color = '#e2564b'; out.textContent = 'Percorrenza non disponibile (' + r.motivo + ')'; }
@@ -7565,6 +7588,7 @@
     if (gpsMezzoCorrenteWeb === 'transit') { mostraMezziSuMapsWeb(origin, dest); return; }   // [GPS] coi mezzi si va su Maps
     if (out) { out.style.color = '#8aa0c8'; out.textContent = 'Calcolo…'; }
     const r = await calcolaPercorrenzaWeb(origin, dest, gpsMezzoCorrenteWeb);
+    if (r.ok && r.destLat != null) gpsCoordDestWeb = { lat: r.destLat, lng: r.destLng };   // [COORDINATE]
     if (!out) return;
     if (r.ok) { const min = Math.round(r.durataTrafficoSec / 60); gpsStimaCorrenteWeb = { min: min, origine: 'indirizzo' }; out.style.color = '#9cc4f2'; out.textContent = '≈ ' + formattaDurataWeb(min) + ' di viaggio · dall\'indirizzo digitato'; }
     else { out.style.color = '#e2564b'; out.textContent = 'Percorrenza non disponibile (' + r.motivo + ')'; }
@@ -7601,6 +7625,7 @@
     if ($('app-parti-da')) $('app-parti-da').value = '';   // [GPS] campo partenza vuoto: se resta vuoto la verifica parte dalla base
     if ($('app-gps-verifica-out')) $('app-gps-verifica-out').textContent = '';
     gpsStimaCorrenteWeb = null;
+    gpsCoordDestWeb = null;   // [COORDINATE] cambiato contesto: il punto vecchio non vale piu'
     selMezzoGpsWeb('driving');   // [GPS] nuovo appuntamento: si riparte dall'auto
     resetOrigBtnGpsWeb(); if ($('app-parti-da-wrap')) $('app-parti-da-wrap').style.display = 'none';
     chiudiSuggLuogo();
@@ -7931,7 +7956,7 @@
       const sub = document.createElement('div'); sub.className = 'muted'; sub.style.fontSize = '12px'; sub.style.marginTop = '3px';
       sub.innerHTML = parti.join('<span style="opacity:.5;">&nbsp;&nbsp;·&nbsp;&nbsp;</span>');
       const elLuogo = sub.querySelector('.app-luogo-apri');
-      if (elLuogo) elLuogo.onclick = (e) => { e.preventDefault(); e.stopPropagation(); apriPostoWeb(a.luogo); };
+      if (elLuogo) elLuogo.onclick = (e) => { e.preventDefault(); e.stopPropagation(); apriPostoWeb({ testo: a.luogo, lat: a.luogo_lat, lng: a.luogo_lng }); };
       mid.appendChild(sub);
     }
     // [GPS] badge percorrenza di oggi (4 stati + "Sono partito")
@@ -8020,7 +8045,7 @@
   async function caricaAppuntamenti() {
     const cont = $('app-item-container'); cont.innerHTML = '<p class="muted">Caricamento…</p>';
     const { data, error } = await sb.from('appuntamenti')
-      .select('id, client_id, titolo, data, ora, ora_fine, luogo, note, anticipo, datanotifica, oranotifica, ripetizione, giornomese, fine_tipo, fine_data, fine_conteggio, serie_client_id, condiviso, user_id, partito_at, mezzo')
+      .select('id, client_id, titolo, data, ora, ora_fine, luogo, note, anticipo, datanotifica, oranotifica, ripetizione, giornomese, fine_tipo, fine_data, fine_conteggio, serie_client_id, condiviso, user_id, partito_at, mezzo, luogo_lat, luogo_lng')   // [COORDINATE] servono ad aprire le mappe sul punto esatto
       .order('id', { ascending: true });
     if (error) { cont.innerHTML = '<p class="err">Errore: ' + error.message + '</p>'; return; }
     appItemsCaricati = data || [];
@@ -8045,7 +8070,9 @@
     }
     if (idAppInModifica) {
       // In modifica aggiorno solo i campi base della singola occorrenza (la ricorrenza non si tocca qui).
-      const { error } = await sb.from('appuntamenti').update({ titolo, data, ora, ora_fine, luogo, note, mezzo: gpsMezzoCorrenteWeb, anticipo: prom.anticipo, datanotifica: prom.datanotifica, oranotifica: prom.oranotifica }).eq('id', idAppInModifica);
+      const { error } = await sb.from('appuntamenti').update({ titolo, data, ora, ora_fine, luogo, note, mezzo: gpsMezzoCorrenteWeb,
+        ...(gpsCoordDestWeb ? { luogo_lat: gpsCoordDestWeb.lat, luogo_lng: gpsCoordDestWeb.lng } : {}),   // [COORDINATE] solo se calcolate ora
+        anticipo: prom.anticipo, datanotifica: prom.datanotifica, oranotifica: prom.oranotifica }).eq('id', idAppInModifica);
       if (error) { homeToast('Errore modifica appuntamento: ' + error.message); return; }
       await flushPendingAllegati(appEditClientId);
       salvaStimaSuAppWeb(appEditClientId);
@@ -8056,6 +8083,8 @@
         const cidNuovo = uuid();
         const { error } = await sb.from('appuntamenti').insert([{
           client_id: cidNuovo, titolo, data, ora, ora_fine, luogo, note, mezzo: gpsMezzoCorrenteWeb,
+          luogo_lat: gpsCoordDestWeb ? gpsCoordDestWeb.lat : null,   // [COORDINATE]
+          luogo_lng: gpsCoordDestWeb ? gpsCoordDestWeb.lng : null,
           anticipo: prom.anticipo, datanotifica: prom.datanotifica, oranotifica: prom.oranotifica,
           ripetizione: 'nessuna', giornomese: null, fine_tipo: 'nessuna', fine_data: null, fine_conteggio: null,
           serie_client_id: null, user_id: userId
@@ -8100,6 +8129,7 @@
     if ($('app-parti-da')) $('app-parti-da').value = '';   // [GPS] campo partenza vuoto: se resta vuoto la verifica parte dalla base
     if ($('app-gps-verifica-out')) $('app-gps-verifica-out').textContent = '';
     gpsStimaCorrenteWeb = null;
+    gpsCoordDestWeb = null;   // [COORDINATE] cambiato contesto: il punto vecchio non vale piu'
     resetOrigBtnGpsWeb(); if ($('app-parti-da-wrap')) $('app-parti-da-wrap').style.display = 'none';
     $('app-note').value = a.note || '';
     appPromemScelti = (a.anticipo && a.anticipo !== 'nessuno') ? String(a.anticipo).split(',').filter(Boolean) : [];
