@@ -7451,6 +7451,12 @@
   // con l'appuntamento e serve ad aprire le mappe sul posto giusto invece di far
   // ricercare l'indirizzo a parole (Yandex, in Italia, sbaglia comune).
   let gpsCoordDestWeb = null;      // { lat, lng } oppure null
+  // [COORDINATE] L'indirizzo con cui il form e' stato APERTO. Serve a distinguere
+  // "non ho ricalcolato, l'indirizzo e' lo stesso" (le coordinate salvate valgono
+  // ancora) da "ho cambiato indirizzo senza verificare" (il punto vecchio adesso
+  // e' sbagliato, e va cancellato: meglio nessuna coordinata che una che porta
+  // con sicurezza nel posto di ieri).
+  let gpsLuogoCaricatoWeb = null;
 
   function idrataStimeWeb() {
     if (gpsStimeIdratateWeb) return;
@@ -7626,6 +7632,7 @@
     if ($('app-gps-verifica-out')) $('app-gps-verifica-out').textContent = '';
     gpsStimaCorrenteWeb = null;
     gpsCoordDestWeb = null;   // [COORDINATE] cambiato contesto: il punto vecchio non vale piu'
+    gpsLuogoCaricatoWeb = null;   // [COORDINATE] form nuovo: nessun indirizzo di partenza
     selMezzoGpsWeb('driving');   // [GPS] nuovo appuntamento: si riparte dall'auto
     resetOrigBtnGpsWeb(); if ($('app-parti-da-wrap')) $('app-parti-da-wrap').style.display = 'none';
     chiudiSuggLuogo();
@@ -8070,8 +8077,17 @@
     }
     if (idAppInModifica) {
       // In modifica aggiorno solo i campi base della singola occorrenza (la ricorrenza non si tocca qui).
+      // [COORDINATE] Tre casi, non due:
+      //  1. ho appena verificato    -> scrivo le coordinate nuove
+      //  2. indirizzo cambiato senza verificare -> cancello quelle vecchie (punterebbero
+      //     al posto di prima, e con le coordinate la mappa ci va DRITTA: peggio del testo)
+      //  3. indirizzo invariato     -> non tocco il campo, quelle salvate valgono ancora
+      const luogoCambiatoWeb = (gpsLuogoCaricatoWeb !== null && luogo !== gpsLuogoCaricatoWeb);
+      const patchCoordWeb = gpsCoordDestWeb
+        ? { luogo_lat: gpsCoordDestWeb.lat, luogo_lng: gpsCoordDestWeb.lng }
+        : (luogoCambiatoWeb ? { luogo_lat: null, luogo_lng: null } : {});
       const { error } = await sb.from('appuntamenti').update({ titolo, data, ora, ora_fine, luogo, note, mezzo: gpsMezzoCorrenteWeb,
-        ...(gpsCoordDestWeb ? { luogo_lat: gpsCoordDestWeb.lat, luogo_lng: gpsCoordDestWeb.lng } : {}),   // [COORDINATE] solo se calcolate ora
+        ...patchCoordWeb,
         anticipo: prom.anticipo, datanotifica: prom.datanotifica, oranotifica: prom.oranotifica }).eq('id', idAppInModifica);
       if (error) { homeToast('Errore modifica appuntamento: ' + error.message); return; }
       await flushPendingAllegati(appEditClientId);
@@ -8130,6 +8146,7 @@
     if ($('app-gps-verifica-out')) $('app-gps-verifica-out').textContent = '';
     gpsStimaCorrenteWeb = null;
     gpsCoordDestWeb = null;   // [COORDINATE] cambiato contesto: il punto vecchio non vale piu'
+    gpsLuogoCaricatoWeb = a.luogo || '';   // [COORDINATE] indirizzo di partenza di questa modifica
     resetOrigBtnGpsWeb(); if ($('app-parti-da-wrap')) $('app-parti-da-wrap').style.display = 'none';
     $('app-note').value = a.note || '';
     appPromemScelti = (a.anticipo && a.anticipo !== 'nessuno') ? String(a.anticipo).split(',').filter(Boolean) : [];
