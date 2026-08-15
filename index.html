@@ -2466,7 +2466,7 @@
   // [ALLEGATI NOTE] rimuove un allegato: cancella il file e la riga documento.
   async function rimuoviAllegatoNota(d) {
     if (!(await confermaPopup('Rimuovere l\'allegato «' + (d.titolo || d.nome_file || 'documento') + '»?', { titolo: 'Rimuovi allegato', ok: 'Rimuovi', pericolo: true }))) return;
-    try { if (d.storage_path) await sb.storage.from(DOC_BUCKET).remove([d.storage_path]); } catch (e) {}
+    await rimuoviFileSeUltimoWeb(d.storage_path);   // [ALLEGATI RICORRENTI] solo se e' l'ultimo riferimento
     const { error } = await sb.from('documenti').delete().eq('id', d.id);
     if (error) { homeToast('Errore rimozione: ' + error.message); return; }
     await caricaNote();
@@ -3569,6 +3569,56 @@
 
   // ====== DOCUMENTI ======
   const DOC_BUCKET = 'documenti';
+
+  // [ALLEGATI RICORRENTI] Lo STESSO file puo' essere puntato da piu' righe di
+  // `documenti`: quando un ricorrente genera l'occorrenza successiva, gli allegati
+  // vengono ri-agganciati al figlio riusando lo stesso storage_path (nessun file
+  // duplicato). Quindi NON si puo' cancellare il file al primo riferimento che se
+  // ne va: si toglierebbe l'allegato a tutte le altre occorrenze.
+  // In caso di dubbio (query fallita, offline) il file NON si tocca: meglio un file
+  // orfano nel bucket che un allegato che sparisce da venti rate.
+  // Stessa regola dell'app (documentiStorage.ts -> rimuoviFileDocumento).
+  async function rimuoviFileSeUltimoWeb(storagePath) {
+    if (!storagePath) return;
+    try {
+      const { count, error } = await sb.from('documenti')
+        .select('id', { count: 'exact', head: true })
+        .eq('storage_path', storagePath);
+      // <= 1: resta al massimo la riga che sto cancellando adesso.
+      if (error || typeof count !== 'number' || count > 1) return;
+      await sb.storage.from(DOC_BUCKET).remove([storagePath]);
+    } catch (e) { /* best-effort: non blocco mai la cancellazione della riga */ }
+  }
+
+  // [ALLEGATI RICORRENTI] Ri-aggancia al figlio gli allegati del genitore.
+  // Gli allegati non sono un campo del memo/scadenza: sono righe in `documenti`
+  // legate al client_id. Il figlio ne ha uno nuovo, quindi senza questa copia
+  // nasce senza allegati (bug visto il 15/8 su "Pagamento rateazione INPS").
+  async function copiaAllegatiOccorrenzaWeb(tipo, genitoreClientId, figlioClientId, userId) {
+    if (!genitoreClientId || !figlioClientId) return;
+    try {
+      const { data, error } = await sb.from('documenti')
+        .select('client_id, titolo, nome_file, tipo_file, storage_path, categoria, codice_barre, codice_barre_tipo, codici_barre')
+        .eq('collegato_tipo', tipo)
+        .eq('collegato_client_id', genitoreClientId);
+      if (error || !data || !data.length) return;
+      const righe = [];
+      for (const d of data) {
+        // client_id deterministico (documento + figlio): se app e sito completano
+        // lo stesso ricorrente prima di sincronizzarsi generano lo STESSO codice,
+        // e il vincolo UNIQUE scarta il doppione invece di creare due righe.
+        const idCopia = await idOccorrenzaRicorrente('allegato::' + d.client_id + '::' + figlioClientId, 0);
+        righe.push({
+          client_id: idCopia, titolo: d.titolo, nome_file: d.nome_file, tipo_file: d.tipo_file,
+          storage_path: d.storage_path,   // STESSO file: nessun upload, nessuno spazio in piu'
+          categoria: d.categoria, codice_barre: d.codice_barre, codice_barre_tipo: d.codice_barre_tipo,
+          codici_barre: d.codici_barre, collegato_tipo: tipo, collegato_client_id: figlioClientId,
+          user_id: userId
+        });
+      }
+      if (righe.length) await sb.from('documenti').insert(righe);
+    } catch (e) { /* non blocco la spunta se la copia fallisce */ }
+  }
   let docCaricati = [], docCerca = '', docOrdine = 'recenti';
 
   function mostraDocumenti() { $('doc-tit-ic').innerHTML = svg(CAT_ICONS.ticket, 22); $('doc-back').innerHTML = svg(IC.chevronLeft, 22) + ' Home'; }
@@ -3672,7 +3722,7 @@
 
   async function eliminaDocumento(d) {
     if (!(await confermaPopup('Eliminare «' + (d.titolo || d.nome_file || 'questo documento') + '»?', { titolo: 'Elimina documento', ok: 'Elimina', pericolo: true }))) return;
-    try { if (d.storage_path) await sb.storage.from(DOC_BUCKET).remove([d.storage_path]); } catch (e) {}
+    await rimuoviFileSeUltimoWeb(d.storage_path);   // [ALLEGATI RICORRENTI] solo se e' l'ultimo riferimento
     const { error } = await sb.from('documenti').delete().eq('id', d.id);
     if (error) { homeToast('Errore: ' + error.message); return; }
     await caricaDocumenti();
@@ -5520,7 +5570,12 @@
               occorrenza_numero: occNum, genitore_client_id: m.client_id,
               regola_weekend: m.regola_weekend || null, giorno_ancora: m.giorno_ancora ?? null, user_id: userId
             }]);
-            if (!insErr || insErr.code === '23505') await sb.from('todos_scadenza').update({ prossimo_generato: true }).eq('id', id);
+            if (!insErr || insErr.code === '23505') {
+              // [ALLEGATI RICORRENTI] il figlio ha un client_id nuovo: senza questa
+              // riga nasce senza gli allegati del genitore.
+              await copiaAllegatiOccorrenzaWeb('memo', m.client_id, childId, userId);
+              await sb.from('todos_scadenza').update({ prossimo_generato: true }).eq('id', id);
+            }
           }
         } else if (!completato && m.prossimo_generato) {
           const { data: figli } = await sb.from('todos_scadenza').select('id').eq('genitore_client_id', m.client_id).eq('completato', false);
@@ -5598,7 +5653,7 @@
   // [ALLEGATI MEMO] rimuove un allegato: cancella il file e la riga documento.
   async function rimuoviAllegatoMemo(d) {
     if (!(await confermaPopup('Rimuovere l\'allegato «' + (d.titolo || d.nome_file || 'documento') + '»?', { titolo: 'Rimuovi allegato', ok: 'Rimuovi', pericolo: true }))) return;
-    try { if (d.storage_path) await sb.storage.from(DOC_BUCKET).remove([d.storage_path]); } catch (e) {}
+    await rimuoviFileSeUltimoWeb(d.storage_path);   // [ALLEGATI RICORRENTI] solo se e' l'ultimo riferimento
     const { error } = await sb.from('documenti').delete().eq('id', d.id);
     if (error) { homeToast('Errore rimozione: ' + error.message); return; }
     await caricaMemoItems();
@@ -6423,11 +6478,15 @@
           await sb.from('scadenze').insert([{
             client_id: childId, titolo: s.titolo, data: prossima.data, ora: prossima.ora || '', nota: s.nota || '',
             completata: false, completata_il: null, anticipo: 'nessuno', datanotifica: null, oranotifica: null,
-            sottoattivita: (s.sottoattivita || []).map(x => ({ testo: x.testo, completata: false })), allegati: [], categoria: scadCat.id, sottocategoria: scadSub.id,
+            sottoattivita: (s.sottoattivita || []).map(x => ({ testo: x.testo, completata: false })),
+            allegati: s.allegati || [],   // [ALLEGATI RICORRENTI] prima veniva azzerato qui, mentre l'app lo copiava: le due gambe divergevano
+            categoria: scadCat.id, sottocategoria: scadSub.id,
             ripetizione: s.ripetizione, giornomese: s.giornomese, fine_tipo: s.fine_tipo, fine_data: s.fine_data,
             fine_conteggio: s.fine_conteggio, occorrenza_numero: occNum, genitore_client_id: s.client_id,
             regola_weekend: s.regola_weekend || null, giorno_ancora: s.giorno_ancora ?? null, user_id: userId
           }]);
+          // [ALLEGATI RICORRENTI] come per i memo: ri-aggancia i documenti collegati.
+          await copiaAllegatiOccorrenzaWeb('scadenza', s.client_id, childId, userId);
         }
       } else if (ricorrente && !completata) {
         // De-spunta: rimuovi l'occorrenza successiva generata (figlio non completato).
@@ -6498,7 +6557,7 @@
   // [ALLEGATI SCAD] rimuove un allegato: cancella il file e la riga documento.
   async function rimuoviAllegatoScad(d) {
     if (!(await confermaPopup('Rimuovere l\'allegato «' + (d.titolo || d.nome_file || 'documento') + '»?', { titolo: 'Rimuovi allegato', ok: 'Rimuovi', pericolo: true }))) return;
-    try { if (d.storage_path) await sb.storage.from(DOC_BUCKET).remove([d.storage_path]); } catch (e) {}
+    await rimuoviFileSeUltimoWeb(d.storage_path);   // [ALLEGATI RICORRENTI] solo se e' l'ultimo riferimento
     const { error } = await sb.from('documenti').delete().eq('id', d.id);
     if (error) { homeToast('Errore rimozione: ' + error.message); return; }
     await caricaScadItems();
@@ -7681,7 +7740,7 @@
   // [ALLEGATI APP] rimuove un allegato: cancella il file e la riga documento.
   async function rimuoviAllegatoApp(d) {
     if (!(await confermaPopup('Rimuovere l\'allegato «' + (d.titolo || d.nome_file || 'documento') + '»?', { titolo: 'Rimuovi allegato', ok: 'Rimuovi', pericolo: true }))) return;
-    try { if (d.storage_path) await sb.storage.from(DOC_BUCKET).remove([d.storage_path]); } catch (e) {}
+    await rimuoviFileSeUltimoWeb(d.storage_path);   // [ALLEGATI RICORRENTI] solo se e' l'ultimo riferimento
     const { error } = await sb.from('documenti').delete().eq('id', d.id);
     if (error) { homeToast('Errore rimozione: ' + error.message); return; }
     await caricaAppuntamenti();
