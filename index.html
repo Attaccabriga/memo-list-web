@@ -1418,8 +1418,11 @@
   function domaniGGMMAAAA() { const d = new Date(Date.now() + 86400000); return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear(); }
   // La sezione "Domani" in Home compare dal pomeriggio: la mattina serve la giornata di oggi,
   // dal pomeriggio in poi si comincia a pensare a domani (sveglia, primo treno...).
-  const ORA_MOSTRA_DOMANI = 14;
-  function eOraDiMostrareDomani() { return new Date().getHours() >= ORA_MOSTRA_DOMANI; }
+  // [DOMANI SEMPRE] La soglia delle 14 e' stata tolta il 16/8: "Domani" si mostra
+  // quando ha qualcosa da mostrare, a qualsiasi ora. La funzione resta e torna sempre
+  // true, cosi' i tre punti che la chiamano non cambiano forma: se un domani si
+  // volesse rimettere una regola oraria, si tocca solo qui. Stessa scelta nell'app.
+  function eOraDiMostrareDomani() { return true; }
   function dataEstesaIT() { const d = new Date(); const s = GIORNI_IT[d.getDay()] + ' ' + d.getDate() + ' ' + (MESI_IT[d.getMonth()] || '') + ' ' + d.getFullYear(); return s.charAt(0).toUpperCase() + s.slice(1); }
   function homeToast(msg) {
     let t = document.getElementById('home-toast');
