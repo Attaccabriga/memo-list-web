@@ -2110,8 +2110,8 @@
     chiudiNotaForm();
   }
 
-  async function caricaNote() {
-    const cont = $('note-container'); cont.innerHTML = '<p class="muted">Caricamento…</p>';
+  async function caricaNote(silenzioso) {
+    const cont = $('note-container'); if (!silenzioso) cont.innerHTML = '<p class="muted">Caricamento…</p>';
     const { data, error } = await sb.from('note')
       .select('id, client_id, titolo, testo, colore, immagini, promemoria_data, promemoria_ora, condiviso, user_id, created_at')
       .order('created_at', { ascending: false });
@@ -4115,10 +4115,132 @@
     $('app-view').classList.remove('hidden');
     await caricaMappaUtentiWeb();   // [CONDIVISI §2.2] rubrica nomi pronta prima di disegnare le liste
     switchModulo(moduloCorrente);
+    avviaSyncLiveWeb();   // [SYNC LIVE 16ago] da qui il sito si accorge dei cambiamenti fatti altrove
   }
 
   // ====== LISTE ======
   function mostraListe(){ $('dettaglio-view').classList.add('hidden'); $('liste-view').classList.remove('hidden'); listaCorrente = null; fermaRealtimeSpesa(); }
+
+  // ====== SYNC LIVE — il sito si accorge dei cambiamenti fatti altrove (16 agosto) ======
+  // IL PROBLEMA. L'app apre SETTE canali realtime su Supabase (store.ts ~353): per
+  // questo Samsung e iPhone si aggiornano a vicenda in un attimo. Il sito ne aveva
+  // UNO SOLO, e serviva alla lista della spesa. Tutto il resto veniva letto una volta
+  // sola, nel momento in cui si apriva la sezione: se spuntavi un "Da fare" dal
+  // telefono, la pagina gia' aperta non aveva alcun modo di saperlo. Il dato nel
+  // database era giusto — mancava a chi guardava il modo di venirne a sapere.
+  //
+  // LA CURA, due reti sovrapposte perche' nessuna delle due basta da sola:
+  //   1. REALTIME sulle stesse tabelle che ascolta l'app. ⚠️ NIENTE filtro user_id,
+  //      come nell'app: ci si affida alla RLS, cosi' arrivano anche i cambiamenti
+  //      sugli elementi CONDIVISI con noi (store.ts, nota [CONDIVISI-LIVE 9ago]).
+  //   2. RITORNO SULLA SCHEDA (e ritorno della rete): si ricarica comunque. E' la
+  //      rete per gli eventi persi mentre il portatile dormiva o la connessione era
+  //      caduta — casi in cui il socket non riceve nulla e nessuno se ne accorge.
+  //
+  // NON si rattoppa la singola riga in memoria: si ricarica la VISTA APERTA riusando
+  // le funzioni carica* che esistono gia'. E' meno furbo, ed e' voluto: nessuna nuova
+  // logica di aggiornamento da tenere allineata a quella dell'app, quindi nessun modo
+  // nuovo di sbagliare.
+  //
+  // ⚠️ HOME e CALENDARIO sono FUORI di proposito, e non per dimenticanza:
+  //   - caricaHome() ridisegna la pagina da zero, scheletro animato compreso;
+  //   - caricaCalendario() riporta mese e giorno selezionato a OGGI: chi stesse
+  //     sfogliando settembre verrebbe rispedito indietro da un evento arrivato.
+  // Vanno affrontate con un ricarico mirato, non con questo. Restano come stanno:
+  // si aggiornano quando le riapri.
+  let canaliSyncWeb = [], attesaRicaricoWeb = null, riprovaRicaricoWeb = null;
+
+  // Quale tabella riguarda quale sezione.
+  const MODULI_PER_TABELLA_WEB = {
+    todos:          'dafare',
+    todos_scadenza: 'memo',
+    scadenze:       'scadenze',
+    appuntamenti:   'appuntamenti',
+    note:           'note',
+  };
+
+  // ⚠️ Non si ricarica MAI mentre l'utente sta lavorando: un modale aperto, o il
+  // cursore dentro un campo, vogliono dire "sto scrivendo". Ricaricare gli porterebbe
+  // via quello che ha appena digitato — il modo peggiore di essere utili.
+  function momentoBuonoWeb() {
+    if (document.querySelector('.modal-overlay:not(.hidden)')) return false;
+    const a = document.activeElement;
+    if (a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA' || a.tagName === 'SELECT')) return false;
+    return true;
+  }
+
+  // Ricarica la vista APERTA senza spostare l'utente: se e' dentro una categoria
+  // resta dentro quella categoria, non viene rispedito all'elenco. Sempre in modo
+  // silenzioso (niente "Caricamento…"), altrimenti la lista lampeggerebbe.
+  function ricaricaVistaCorrenteWeb() {
+    if (!userId) return;
+    switch (moduloCorrente) {
+      case 'dafare':
+        if (catCorrente) { caricaTask(true); if (dafareWide()) caricaCategorie(true); }
+        else caricaCategorie(true);
+        break;
+      case 'memo':
+        if (memoCatCorrente) { caricaMemoItems(true); if (memoWide()) caricaMemoCategorie(true); }
+        else caricaMemoCategorie(true);
+        break;
+      case 'scadenze':
+        if (scadSub) caricaScadItems(true);
+        else if (scadCat) caricaScadSottocategorie(scadCat, true);
+        else caricaScadCategorie(true);
+        break;
+      case 'appuntamenti': caricaAppuntamenti(true); break;
+      case 'note':         caricaNote(true); break;
+      default: break;   // spesa ha gia' il suo canale; home e calendario: vedi sopra
+    }
+  }
+
+  // Una modifica sola genera spesso due o tre eventi (la riga, la serie, il
+  // completamento): si aspetta che si calmino e si ricarica una volta.
+  function chiediRicaricoWeb() {
+    if (attesaRicaricoWeb) clearTimeout(attesaRicaricoWeb);
+    attesaRicaricoWeb = setTimeout(eseguiRicaricoWeb, 400);
+  }
+
+  function eseguiRicaricoWeb() {
+    attesaRicaricoWeb = null;
+    if (!momentoBuonoWeb()) {
+      // Sta scrivendo: si ripassa fra poco invece di rinunciare. Rinunciare
+      // significherebbe perdere quel cambiamento fino al prossimo giro.
+      if (!riprovaRicaricoWeb) riprovaRicaricoWeb = setInterval(() => {
+        if (!momentoBuonoWeb()) return;
+        clearInterval(riprovaRicaricoWeb); riprovaRicaricoWeb = null;
+        ricaricaVistaCorrenteWeb();
+      }, 3000);
+      return;
+    }
+    if (riprovaRicaricoWeb) { clearInterval(riprovaRicaricoWeb); riprovaRicaricoWeb = null; }
+    ricaricaVistaCorrenteWeb();
+  }
+
+  function avviaSyncLiveWeb() {
+    fermaSyncLiveWeb();
+    Object.keys(MODULI_PER_TABELLA_WEB).forEach(tabella => {
+      const ch = sb.channel('web-sync-' + tabella)
+        .on('postgres_changes', { event: '*', schema: 'public', table: tabella }, () => {
+          // Sezione non aperta: niente da fare, la rileggera' da sola quando la apri.
+          if (moduloCorrente !== MODULI_PER_TABELLA_WEB[tabella]) return;
+          chiediRicaricoWeb();
+        })
+        .subscribe();
+      canaliSyncWeb.push(ch);
+    });
+    // Registrati una volta sola: avviaApp() puo' essere richiamata.
+    if (!window.__syncLiveAgganciato) {
+      window.__syncLiveAgganciato = true;
+      document.addEventListener('visibilitychange', () => { if (!document.hidden) chiediRicaricoWeb(); });
+      window.addEventListener('online', () => chiediRicaricoWeb());
+    }
+  }
+
+  function fermaSyncLiveWeb() {
+    canaliSyncWeb.forEach(ch => { try { sb.removeChannel(ch); } catch (e) {} });
+    canaliSyncWeb = [];
+  }
 
   // ====== REALTIME SPESA (broadcast 'spesa-sync', stesso canale dell'app) ======
   // Il web entra nel canale 'spesa-sync': ascolta i cambiamenti (ricarica la lista
@@ -4601,8 +4723,8 @@
     { nome: 'Lavoro',    icona: 'briefcase' },
   ];
 
-  async function caricaCategorie() {
-    const cont = $('dafare-cat-container'); cont.innerHTML = '<p class="muted">Caricamento…</p>';
+  async function caricaCategorie(silenzioso) {
+    const cont = $('dafare-cat-container'); if (!silenzioso) cont.innerHTML = '<p class="muted">Caricamento…</p>';
     const { data, error } = await sb.from('categorie_todo')
       .select('nome, icona, eliminata_da, created_at')
       .eq('user_id', userId)
@@ -4799,9 +4921,9 @@
     return copia; // data_inserimento = ordine del DB
   }
 
-  async function caricaTask() {
+  async function caricaTask(silenzioso) {
     if (!catCorrente) return;
-    const cont = $('dafare-task-container'); cont.innerHTML = '<p class="muted">Caricamento…</p>';
+    const cont = $('dafare-task-container'); if (!silenzioso) cont.innerHTML = '<p class="muted">Caricamento…</p>';
     const { data, error } = await sb.from('todos')
       .select('id, testo, completato, completato_il, ordine, condiviso, user_id')
       .eq('categoria', catCorrente.nome)
@@ -5094,8 +5216,8 @@
     });
   }
 
-  async function caricaMemoCategorie() {
-    const cont = $('memo-cat-container'); cont.innerHTML = '<p class="muted">Caricamento…</p>';
+  async function caricaMemoCategorie(silenzioso) {
+    const cont = $('memo-cat-container'); if (!silenzioso) cont.innerHTML = '<p class="muted">Caricamento…</p>';
     // Categorie: 3 fisse + custom dal blob, senza doppioni.
     const blob = await leggiBlobMemo();
     const viste = new Set(CAT_PREDEFINITE.map(c => norm(c.nome)));
@@ -5388,9 +5510,9 @@
       if (m) selezionaMemo(m, el);
     });
   }
-  async function caricaMemoItems() {
+  async function caricaMemoItems(silenzioso) {
     if (!memoCatCorrente) return;
-    const cont = $('memo-item-container'); cont.innerHTML = '<p class="muted">Caricamento…</p>';
+    const cont = $('memo-item-container'); if (!silenzioso) cont.innerHTML = '<p class="muted">Caricamento…</p>';
     const { data, error } = await sb.from('todos_scadenza')
       .select('id, client_id, testo, data, ora, nota, completato, completato_il, ripetizione, giornomese, intervallo_minuti, fine_tipo, fine_data, fine_conteggio, occorrenza_numero, genitore_client_id, prossimo_generato, regola_weekend, giorno_ancora, condiviso, user_id')
       .eq('categoria', memoCatCorrente.nome)
@@ -5989,8 +6111,8 @@
     return { cat, sub };
   }
 
-  async function caricaScadCategorie() {
-    const cont = $('scad-cat-container'); cont.innerHTML = '<p class="muted">Caricamento…</p>';
+  async function caricaScadCategorie(silenzioso) {
+    const cont = $('scad-cat-container'); if (!silenzioso) cont.innerHTML = '<p class="muted">Caricamento…</p>';
     await caricaScadCustom();   // [CATEGORIE SCAD CUSTOM] aggiorna scadTree con le personalizzazioni
     const { cat: contCat } = await scadConteggi();
     cont.innerHTML = '';
@@ -6021,8 +6143,8 @@
     caricaScadSottocategorie(cat);
   }
 
-  async function caricaScadSottocategorie(cat) {
-    const cont = $('scad-sub-container'); cont.innerHTML = '<p class="muted">Caricamento…</p>';
+  async function caricaScadSottocategorie(cat, silenzioso) {
+    const cont = $('scad-sub-container'); if (!silenzioso) cont.innerHTML = '<p class="muted">Caricamento…</p>';
     const { sub: contSub } = await scadConteggi();
     cont.innerHTML = '';
     cat.sub.forEach(sub => {
@@ -6357,9 +6479,9 @@
     return div;
   }
 
-  async function caricaScadItems() {
+  async function caricaScadItems(silenzioso) {
     if (!scadCat || !scadSub) return;
-    const cont = $('scad-item-container'); cont.innerHTML = '<p class="muted">Caricamento…</p>';
+    const cont = $('scad-item-container'); if (!silenzioso) cont.innerHTML = '<p class="muted">Caricamento…</p>';
     const { data, error } = await sb.from('scadenze')
       .select('id, client_id, titolo, data, ora, nota, completata, completata_il, condiviso, user_id, ripetizione, giornomese, intervallo_minuti, fine_tipo, fine_data, fine_conteggio, occorrenza_numero, genitore_client_id, regola_weekend, giorno_ancora, sottoattivita, anticipo, datanotifica, oranotifica')
       .eq('categoria', scadCat.id).eq('sottocategoria', scadSub.id)
@@ -8149,8 +8271,8 @@
     avviaTimerBadgeGpsWeb();                       // [GPS] badge vivo (idempotente)
   }
 
-  async function caricaAppuntamenti() {
-    const cont = $('app-item-container'); cont.innerHTML = '<p class="muted">Caricamento…</p>';
+  async function caricaAppuntamenti(silenzioso) {
+    const cont = $('app-item-container'); if (!silenzioso) cont.innerHTML = '<p class="muted">Caricamento…</p>';
     const { data, error } = await sb.from('appuntamenti')
       .select('id, client_id, titolo, data, ora, ora_fine, luogo, note, anticipo, datanotifica, oranotifica, ripetizione, giornomese, fine_tipo, fine_data, fine_conteggio, serie_client_id, condiviso, user_id, partito_at, mezzo, luogo_lat, luogo_lng, durata_stimata_min, durata_stimata_origine, durata_stimata_il, durata_stimata_per')   // [COORDINATE] mappe + [STIMA DB] la stima e' un dato dell'appuntamento
       .order('id', { ascending: true });
@@ -8646,7 +8768,7 @@
   $('scad-nuova-cat').addEventListener('keydown', e => { if (e.key === 'Enter') creaScadCategoria(); });
   $('scad-add-sub').onclick = creaScadSottocategoria;
   $('scad-nuova-sub').addEventListener('keydown', e => { if (e.key === 'Enter') creaScadSottocategoria(); });
-  $('dafare-refresh-cat').onclick = caricaCategorie;
+  $('dafare-refresh-cat').onclick = () => caricaCategorie();
   $('dafare-back-btn').onclick = () => history.back();
   $('dafare-cerca').addEventListener('input', e => eseguiRicerca(e.target.value));
   $('icon-modal-close').onclick = chiudiSelettoreIcona;
@@ -8670,7 +8792,7 @@
   $('dafare-add-task').onclick = aggiungiTask;
   $('dafare-nuovo-task').addEventListener('keydown', e => { if (e.key === 'Enter') aggiungiTask(); });
   $('dafare-sort-sel').onchange = (e) => { ordineTodo = e.target.value; try { localStorage.setItem('ordine_todo', ordineTodo); } catch (err) {} caricaTask(); };
-  $('memo-refresh-cat').onclick = caricaMemoCategorie;
+  $('memo-refresh-cat').onclick = () => caricaMemoCategorie();
   $('memo-back-btn').onclick = () => history.back();
   $('memo-salva').onclick = salvaMemo;
   $('memo-annulla-edit').onclick = resetMemoForm;
@@ -8688,7 +8810,7 @@
   $('memo-cerca').addEventListener('input', e => eseguiRicercaMemo(e.target.value));
   $('scad-cerca').addEventListener('input', e => eseguiRicercaScad(e.target.value));
   $('memo-sort-sel').onchange = (e) => { ordineMemo = e.target.value; try { localStorage.setItem('filtro_memo', ordineMemo); } catch (err) {} caricaMemoItems(); };
-  $('scad-refresh').onclick = caricaScadCategorie;
+  $('scad-refresh').onclick = () => caricaScadCategorie();
   $('scad-back-cat').onclick = mostraScadCategorie;
   $('scad-back-sub').onclick = () => { scadSub = null; resetScadForm(); aggiornaVisibilitaColonneScad(); };
   $('scad-salva').onclick = salvaScad;
@@ -8721,7 +8843,7 @@
   $('scad-sub-input').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); aggiungiScadSottoattivita(); } });
   creaDettaturaCampo('scad-sub-input', 'scad-mic-sotto');
   $('scad-modal-alleg-add').onclick = () => { if (scadInModificaObj) allegaAScadPicker(scadInModificaObj); else allegaScadFormPicker(); };
-  $('app-refresh').onclick = caricaAppuntamenti;
+  $('app-refresh').onclick = () => caricaAppuntamenti();
   $('app-form-alleg').onclick = () => allegaAppFormPicker();
   $('app-salva').onclick = salvaApp;
   $('app-annulla-edit').onclick = resetAppForm;
