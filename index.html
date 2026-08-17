@@ -5541,12 +5541,66 @@
     $('memo-fine-conteggio').classList.toggle('hidden', ft !== 'conteggio');
   }
 
-  const RIP_LABEL_MEMO = { ogni_minuti: 'Ogni tot minuti', ogni_ore: 'Ogni tot ore', ogni_giorni: 'Ogni tot giorni', giornaliero: 'Ogni giorno', settimanale: 'Ogni settimana', mensile: 'Ogni mese', ogni_x: 'Ogni X del mese', annuale: 'Ogni anno' };
+  // [ETICHETTA RIPETIZIONE — 16 agosto sera] La frase col NUMERO VERO, come nell'app.
+  //
+  // Prima c'erano DUE mappe di etichette (una per i memo, una condivisa fra scadenze
+  // e appuntamenti) e ogni funzione ci appiccicava pezzi a modo suo. Ne uscivano tre
+  // difetti diversi:
+  //   1. "Ogni tot giorni: 14" invece di "Ogni 14 giorni" (memo);
+  //   2. "Ogni X del mese: giorno 15" invece di "Il 15 di ogni mese" (tutti e tre);
+  //   3. ⚠️ RIP_LABEL_SCAD non aveva affatto 'ogni_giorni', pur essendo una voce
+  //      offerta dal menu: scadenze e appuntamenti "ogni N giorni" cadevano sul ramo
+  //      di riserva e mostravano la parola "Ripetizione". Nessuno se n'era accorto
+  //      proprio perche' un fallback non da' errore: da' una parola plausibile.
+  //
+  // Adesso la frase la costruisce UNA funzione sola, come nell'app fa
+  // lib/etichettaRipetizione.ts. Le funzioni labelRip* restano, ma solo per
+  // aggiungere quello che e' davvero specifico di ciascun modulo (fine serie,
+  // "3 di 10", "fino al ...").
+  //
+  // Il sito e' solo in italiano, quindi bastano due forme: singolare e plurale.
+  const DIVISORE_RIP_WEB = { ogni_minuti: 1, ogni_ore: 60, ogni_giorni: 1440 };
+  const UNITA_RIP_WEB = {
+    ogni_minuti: ['minuto', 'minuti'],
+    ogni_ore:    ['ora', 'ore'],
+    ogni_giorni: ['giorno', 'giorni'],
+  };
+  const RIP_SEMPLICI_WEB = {
+    giornaliero: 'Ogni giorno',
+    settimanale: 'Ogni settimana',
+    mensile:     'Ogni mese',
+    annuale:     'Ogni anno',
+  };
+
+  function etichettaRipWeb(item) {
+    const rip = item && item.ripetizione;
+    if (!rip || rip === 'nessuna') return '';
+
+    const divisore = DIVISORE_RIP_WEB[rip];
+    if (divisore) {
+      const unita = UNITA_RIP_WEB[rip];
+      const minuti = Number(item.intervallo_minuti);
+      // Numero mancante (record vecchi, o rotti dal bug del 16 agosto): si dice
+      // "tot" invece di inventarsi una cifra.
+      if (!minuti || minuti <= 0) return 'Ogni tot ' + unita[1];
+      const n = minuti / divisore;
+      if (n === 1) return 'Ogni ' + unita[0];
+      // L'ora si digita col tastierino decimale: 1,5 ore va scritto con la virgola.
+      const mostrato = Number.isInteger(n) ? String(n) : String(Math.round(n * 100) / 100).replace('.', ',');
+      return 'Ogni ' + mostrato + ' ' + unita[1];
+    }
+
+    if (rip === 'ogni_x') {
+      const giorno = parseInt(item.giornomese, 10);
+      return giorno ? 'Il ' + giorno + ' di ogni mese' : 'Ogni X del mese';
+    }
+
+    return RIP_SEMPLICI_WEB[rip] || 'Ripetizione';
+  }
+
   function labelRipMemo(m) {
-    if (!m.ripetizione || m.ripetizione === 'nessuna') return '';
-    let s = RIP_LABEL_MEMO[m.ripetizione] || 'Ripetizione';
-    if (RIP_CON_INTERVALLO_WEB.includes(m.ripetizione) && m.intervallo_minuti) s += ': ' + (m.intervallo_minuti / FATTORE_INTERVALLO_WEB(m.ripetizione));
-    if (m.ripetizione === 'ogni_x' && m.giornomese) s += ': giorno ' + m.giornomese;
+    let s = etichettaRipWeb(m);
+    if (!s) return '';
     if (m.fine_tipo === 'conteggio' && m.fine_conteggio) s += '  ·  ' + m.fine_conteggio + ' volte';
     if (m.fine_tipo === 'data' && m.fine_data) s += '  ·  fino al ' + m.fine_data;
     return s;
@@ -6337,11 +6391,9 @@
     $('scad-fine-conteggio').classList.toggle('hidden', ft !== 'conteggio');
   }
 
-  const RIP_LABEL_SCAD = { giornaliero: 'Ogni giorno', settimanale: 'Ogni settimana', mensile: 'Ogni mese', ogni_x: 'Ogni X del mese', annuale: 'Ogni anno' };
   function labelRipScad(s) {
-    if (!s.ripetizione || s.ripetizione === 'nessuna') return '';
-    let out = RIP_LABEL_SCAD[s.ripetizione] || 'Ripetizione';
-    if (s.ripetizione === 'ogni_x' && s.giornomese) out += ': giorno ' + s.giornomese;
+    let out = etichettaRipWeb(s);
+    if (!out) return '';
     if (s.fine_tipo === 'conteggio' && s.fine_conteggio) out += '  ·  ' + (s.occorrenza_numero || 1) + ' di ' + s.fine_conteggio;
     if (s.fine_tipo === 'data' && s.fine_data) out += '  ·  fino al ' + s.fine_data;
     return out;
@@ -7877,12 +7929,9 @@
     $('app-fine-conteggio').classList.toggle('hidden', ft !== 'conteggio');
   }
 
-  // Etichetta ricorrenza mostrata nella riga (riusa le label delle scadenze).
+  // Etichetta ricorrenza mostrata nella riga (frase costruita da etichettaRipWeb).
   function labelRipApp(a) {
-    if (!a.ripetizione || a.ripetizione === 'nessuna') return '';
-    let out = RIP_LABEL_SCAD[a.ripetizione] || 'Ripetizione';
-    if (a.ripetizione === 'ogni_x' && a.giornomese) out += ': giorno ' + a.giornomese;
-    return out;
+    return etichettaRipWeb(a);
   }
 
   // Legge la ripetizione dal form appuntamenti (come le scadenze, ma senza regola weekend).
@@ -8274,7 +8323,7 @@
   async function caricaAppuntamenti(silenzioso) {
     const cont = $('app-item-container'); if (!silenzioso) cont.innerHTML = '<p class="muted">Caricamento…</p>';
     const { data, error } = await sb.from('appuntamenti')
-      .select('id, client_id, titolo, data, ora, ora_fine, luogo, note, anticipo, datanotifica, oranotifica, ripetizione, giornomese, fine_tipo, fine_data, fine_conteggio, serie_client_id, condiviso, user_id, partito_at, mezzo, luogo_lat, luogo_lng, durata_stimata_min, durata_stimata_origine, durata_stimata_il, durata_stimata_per')   // [COORDINATE] mappe + [STIMA DB] la stima e' un dato dell'appuntamento
+      .select('id, client_id, titolo, data, ora, ora_fine, luogo, note, anticipo, datanotifica, oranotifica, ripetizione, giornomese, intervallo_minuti, fine_tipo, fine_data, fine_conteggio, serie_client_id, condiviso, user_id, partito_at, mezzo, luogo_lat, luogo_lng, durata_stimata_min, durata_stimata_origine, durata_stimata_il, durata_stimata_per')   // [COORDINATE] mappe + [STIMA DB] la stima e' un dato dell'appuntamento
       .order('id', { ascending: true });
     if (error) { cont.innerHTML = '<p class="err">Errore: ' + error.message + '</p>'; return; }
     appItemsCaricati = data || [];
