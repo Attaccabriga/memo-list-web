@@ -450,6 +450,28 @@
   </div>
 </div>
 
+<!-- [NOTE IN GRANDE] Popup condiviso per le note lunghe di appuntamenti e scadenze.
+     Il valore NON vive qui: vive nell'<input type="hidden"> del form, e questo
+     popup si limita ad aprirlo e riscriverlo. Cosi' salvataggio e caricamento
+     restano quelli di prima, intoccati. -->
+<div id="nota-modal" class="modal-overlay hidden">
+  <div class="modal-card" style="max-width:620px;">
+    <div class="modal-head">
+      <h3 id="nota-modal-titolo">Note</h3>
+      <button id="nota-modal-close" class="iconbtn" title="Chiudi"></button>
+    </div>
+    <div style="display:flex; gap:8px; align-items:flex-start; margin-bottom:12px;">
+      <textarea id="nota-modal-txt" class="field" placeholder="Scrivi qui…"
+                style="margin:0; flex:1; min-height:260px; resize:vertical; line-height:1.55; font-family:inherit; font-size:15px;"></textarea>
+      <button id="nota-modal-mic" class="btn btn-ghost" style="width:auto; padding:8px 11px;" title="Detta"></button>
+    </div>
+    <div style="display:flex; gap:8px;">
+      <button id="nota-modal-annulla" class="btn btn-ghost" style="flex:1;">Annulla</button>
+      <button id="nota-modal-salva" class="btn btn-primary" style="flex:1; width:auto;">Salva</button>
+    </div>
+  </div>
+</div>
+
 <!-- Overlay di avvio: copre lo schermo finché non sappiamo se c'è una sessione,
      così al reload non lampeggia il login. Il login resta renderizzato sotto
      (serve per far caricare correttamente il captcha Turnstile). -->
@@ -860,10 +882,10 @@
             </div>
             <input id="scad-ora" class="field" type="time" style="flex:1;" title="Ora (facoltativa)" />
           </div>
-          <div style="display:flex; gap:8px; align-items:center;">
-            <input id="scad-nota" class="field" style="margin:0; flex:1;" placeholder="Nota (facoltativa)…" />
-            <button id="scad-mic-nota" class="btn btn-ghost" style="width:auto; padding:8px 11px;" title="Detta la nota"></button>
-          </div>
+          <!-- [NOTE IN GRANDE] vedi app-note. Il microfono e' passato dentro al
+               popup: dettare un testo lungo dentro una riga sola non aveva senso. -->
+          <input id="scad-nota" type="hidden" />
+          <div id="scad-nota-vista"></div>
           <!-- PROMEMORIA (multipli, come Appuntamenti) -->
           <div id="scad-promem-sez" style="background:#111a30; border:1px solid #26305a; border-radius:12px; padding:12px 14px;">
             <div style="font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; margin-bottom:10px;">Promemoria</div>
@@ -986,7 +1008,11 @@
           </div>
           <div id="app-gps-verifica-out" style="font-size:12px; color:#8aa0c8; margin-top:8px;"></div>
         </div>
-        <input id="app-note" class="field" placeholder="Note (facoltative)…" />
+        <!-- [NOTE IN GRANDE] Il campo resta, ma non si vede: continua a portare il
+             valore per tutto il codice che lo legge e lo scrive. Quello che si
+             vede e' la vista qui sotto, ridisegnata da aggiornaNotaVista(). -->
+        <input id="app-note" type="hidden" />
+        <div id="app-note-vista" style="margin-bottom:12px;"></div>
         <!-- PROMEMORIA (multipli, come l'app) -->
         <div id="app-promem-sez" style="background:#111a30; border:1px solid #26305a; border-radius:12px; padding:12px 14px; margin-bottom:12px;">
           <div style="font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; margin-bottom:10px;">Promemoria</div>
@@ -1050,6 +1076,7 @@
 <script>
   // ====== ICONE (stile Tabler, coerenti con l'app) ======
   const IC = {
+    notaPlus: '<path d="M14 3v4a1 1 0 0 0 1 1h4" /><path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z" /><path d="M12 11v6" /><path d="M9 14h6" />',
     cart: '<path d="M6 19m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M17 19m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M17 17h-11v-14h-2" /><path d="M6 5l14 1l-1 7h-13" />',
     trash: '<path d="M4 7l16 0" /><path d="M10 11l0 6" /><path d="M14 11l0 6" /><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12" /><path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3" />',
     eye: '<path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /><path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6" />',
@@ -1264,6 +1291,87 @@
   $('dafare-cerca-ic').innerHTML = '<span style="color:var(--muted); display:inline-flex;">' + svg(IC.search, 18) + '</span>';
   $('icon-modal-close').innerHTML = svg(IC.x, 20);
   $('share-modal-close').innerHTML = svg(IC.x, 20);
+  $('nota-modal-close').innerHTML = svg(IC.x, 20);
+
+  // ============ [NOTE IN GRANDE] ==========================================
+  // Prima la nota era un <input> di una riga: illeggibile appena il testo
+  // superava mezza frase, e allargarlo avrebbe spinto "Salva" fuori schermo.
+  // Adesso: quando e' vuota c'e' un'AZIONE ("Inserisci note"); quando e' piena
+  // c'e' una CASELLA DI RIEPILOGO che mostra il testo su piu' righe. In tutti
+  // e due i casi si scrive nel popup, dove c'e' spazio davvero.
+  //
+  // ⚠️ Il valore vive sempre nell'<input type="hidden">: e' quello che il resto
+  // del codice legge e scrive, esattamente come prima. La vista e' solo una
+  // pittura, e va RIDIPINTA ogni volta che qualcuno cambia il valore da codice
+  // (caricamento di un elemento, svuotamento del form): per questo trovi
+  // aggiornaNotaVista() accanto a ogni assegnazione.
+  var NOTE_CAMPI = {
+    'app-note':  { titolo: 'Note dell\'appuntamento', vuoto: 'Inserisci note',      label: 'Note' },
+    'scad-nota': { titolo: 'Nota della scadenza',     vuoto: 'Inserisci una nota', label: 'Nota' }
+  };
+
+  function aggiornaNotaVista(inputId) {
+    var box = $(inputId + '-vista'); if (!box) return;
+    var cfg = NOTE_CAMPI[inputId];
+    var v = ($(inputId).value || '').trim();
+
+    if (!v) {
+      box.innerHTML =
+        '<button type="button" class="btn btn-ghost" style="width:100%; justify-content:flex-start; gap:8px; color:var(--blue);">' +
+          svg(IC.notaPlus, 18) + '<span>' + cfg.vuoto + '</span>' +
+        '</button>';
+      box.firstChild.onclick = function () { apriNotaGrande(inputId); };
+      return;
+    }
+
+    box.innerHTML =
+      '<div style="background:#111a30; border:1px solid #26305a; border-radius:12px; padding:11px 13px; cursor:pointer;">' +
+        '<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">' +
+          '<span style="font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px;">' + cfg.label + '</span>' +
+          '<span style="display:flex; gap:2px;">' +
+            '<button type="button" class="iconbtn" data-az="mod" title="Modifica">' + svg(IC.pencil, 16) + '</button>' +
+            '<button type="button" class="iconbtn" data-az="del" title="Togli">' + svg(IC.x, 16) + '</button>' +
+          '</span>' +
+        '</div>' +
+        // pre-wrap: gli a capo scritti nel popup si vedono anche qui.
+        // Il riepilogo si ferma a 4 righe: e' un riassunto, non il testo.
+        '<div style="font-size:14px; color:var(--txt); white-space:pre-wrap; overflow:hidden; display:-webkit-box; -webkit-line-clamp:4; -webkit-box-orient:vertical;">' +
+          escapeHtml(v) +
+        '</div>' +
+      '</div>';
+
+    var card = box.firstChild;
+    card.onclick = function (e) {
+      var b = e.target.closest && e.target.closest('button[data-az]');
+      if (b && b.getAttribute('data-az') === 'del') { $(inputId).value = ''; aggiornaNotaVista(inputId); return; }
+      apriNotaGrande(inputId);
+    };
+  }
+
+  var notaGrandeTarget = null;
+  function apriNotaGrande(inputId) {
+    notaGrandeTarget = inputId;
+    $('nota-modal-titolo').textContent = NOTE_CAMPI[inputId].titolo;
+    $('nota-modal-txt').value = $(inputId).value || '';
+    $('nota-modal').classList.remove('hidden');
+    setTimeout(function () { $('nota-modal-txt').focus(); }, 30);
+  }
+  function chiudiNotaGrande() { $('nota-modal').classList.add('hidden'); notaGrandeTarget = null; }
+  $('nota-modal-close').onclick = chiudiNotaGrande;
+  $('nota-modal-annulla').onclick = chiudiNotaGrande;
+  $('nota-modal-salva').onclick = function () {
+    if (notaGrandeTarget) {
+      $(notaGrandeTarget).value = $('nota-modal-txt').value.trim();
+      aggiornaNotaVista(notaGrandeTarget);
+    }
+    chiudiNotaGrande();
+  };
+  // Click fuori dalla scheda = Annulla, come gli altri popup del sito.
+  $('nota-modal').onclick = function (e) { if (e.target === $('nota-modal')) chiudiNotaGrande(); };
+
+  aggiornaNotaVista('app-note');
+  aggiornaNotaVista('scad-nota');
+  // ============ fine [NOTE IN GRANDE] =====================================
   $('memo-refresh-cat').innerHTML = svg(IC.refresh, 18);
   $('memo-back-btn').innerHTML = svg(IC.chevronLeft, 22) + ' Indietro';
   $('memo-add-cat').innerHTML = svg(IC.plus, 22);
@@ -6215,6 +6323,7 @@
   function resetScadForm() {
     idScadInModifica = null;
     $('scad-titolo').value = ''; $('scad-nota').value = ''; precompilaDataOraScad();
+    aggiornaNotaVista('scad-nota');  // [NOTE IN GRANDE]
     $('scad-rip').value = 'nessuna'; $('scad-rip-giorno').value = ''; $('scad-rip-intervallo').value = ''; $('scad-weekend').value = 'nessuna';
     $('scad-fine-tipo').value = 'nessuna'; $('scad-fine-data').value = ''; $('scad-fine-conteggio').value = '';
     aggiornaVisibilitaRipScad();
@@ -6599,6 +6708,7 @@
     aggiornaGiornoScad();
     $('scad-ora').value = s.ora || '';
     $('scad-nota').value = s.nota || '';
+    aggiornaNotaVista('scad-nota');  // [NOTE IN GRANDE]
     $('scad-rip').value = s.ripetizione || 'nessuna';
     $('scad-rip-intervallo').value = s.intervallo_minuti ? (s.intervallo_minuti / 1440) : '';   // [OGNI N GIORNI]
     $('scad-rip-giorno').value = s.giornomese || '';
@@ -7897,6 +8007,7 @@
   function resetAppForm() {
     idAppInModifica = null;
     ['app-titolo', 'app-data', 'app-ora', 'app-ora-fine', 'app-luogo', 'app-note'].forEach(id => { $(id).value = ''; });
+    aggiornaNotaVista('app-note');   // [NOTE IN GRANDE] il campo e' nascosto: la vista va ridipinta
     if ($('app-parti-da')) $('app-parti-da').value = '';   // [GPS] campo partenza vuoto: se resta vuoto la verifica parte dalla base
     if ($('app-gps-verifica-out')) $('app-gps-verifica-out').textContent = '';
     gpsStimaCorrenteWeb = null;
@@ -8444,6 +8555,7 @@
     gpsLuogoCaricatoWeb = a.luogo || '';   // [COORDINATE] indirizzo di partenza di questa modifica
     resetOrigBtnGpsWeb(); if ($('app-parti-da-wrap')) $('app-parti-da-wrap').style.display = 'none';
     $('app-note').value = a.note || '';
+    aggiornaNotaVista('app-note');   // [NOTE IN GRANDE]
     appPromemScelti = (a.anticipo && a.anticipo !== 'nessuno') ? String(a.anticipo).split(',').filter(Boolean) : [];
     $('app-promem-data').value = a.datanotifica ? dataAppToWeb(a.datanotifica) : '';
     $('app-promem-ora').value = a.oranotifica || '';
@@ -8887,7 +8999,7 @@
   $('scad-rip').onchange = aggiornaVisibilitaRipScad;
   $('scad-fine-tipo').onchange = aggiornaVisibilitaRipScad;
   creaDettaturaCampo('scad-titolo', 'scad-mic-titolo');
-  creaDettaturaCampo('scad-nota', 'scad-mic-nota');
+  creaDettaturaCampo('nota-modal-txt', 'nota-modal-mic');   // [NOTE IN GRANDE] era su scad-nota
   $('scad-sub-add').onclick = aggiungiScadSottoattivita;
   $('scad-sub-input').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); aggiungiScadSottoattivita(); } });
   creaDettaturaCampo('scad-sub-input', 'scad-mic-sotto');
