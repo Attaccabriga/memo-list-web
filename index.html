@@ -13,6 +13,19 @@
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 <style>
   :root { --bg:#0e0f24; --card:#16213e; --card2:#1a1a2e; --field:#0f3460; --green:#1D9E75; --greenBtn:#34c04c; --blue:#4f9deb; --txt:#e8eaf6; --muted:#8a90b4; --danger:#E24B4A; }
+  /* [PALETTE 09/09] I COLORI DEI TIPI, IN UN POSTO SOLO.
+     Il sito e' un codice separato dall'app e aveva i suoi colori scritti a mano
+     in sette punti: il 09/09 i memo sono passati al viola nell'app e qui erano
+     rimasti verdi. Questi valori sono i gemelli di lib/colori.ts dell'app:
+     se cambiano di la', vanno cambiati anche qui. Sono i due unici posti. */
+  :root {
+    --tipo-scadenza:#EF9F27; --tipo-memo:#A56BE8; --tipo-appuntamento:#378ADD;
+    --tipo-todo:#5DCAA5;     --tipo-nota:#7F77DD; --tipo-spesa:#1D9E75;
+    --tipo-calendario:#2BB3C0; --tipo-ricettario:#D4537E;
+    --tipo-documenti:#7986CB;  --tipo-archivio:#888780;
+    /* Stati: il rosso e' riservato a questi, mai a un tipo (D2). */
+    --stato-ok:#4CAF50; --stato-imminente:#F2C230; --stato-scaduto:#E24B4A;
+  }
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   body { margin:0; background:var(--bg); color:var(--txt); font-family:-apple-system,"Segoe UI",Roboto,system-ui,sans-serif; }
   .wrap { max-width:1680px; margin:0 auto; padding:20px 26px 80px; }
@@ -27,7 +40,13 @@
   .pw-eye { position:absolute; right:8px; top:8px; background:none; border:none; color:var(--muted); cursor:pointer; padding:6px; display:inline-flex; }
   .btn { border:none; border-radius:10px; padding:13px 16px; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:6px; }
   .btn-primary { background:var(--blue); color:#fff; width:100%; }
-  .btn-green { background:var(--accent, var(--greenBtn)); color:#fff; }
+  /* [REGOLA COLORI 09/09] Questa classe si chiamava btn-green e prendeva
+     var(--accent), cioe' il colore della SEZIONE: in Memo il bottone "Aggiungi
+     memo" era verde, poi viola. Ma un bottone e' un'AZIONE, e le azioni hanno
+     un colore solo in tutto il prodotto, altrimenti l'utente perde l'unico
+     segnale costante di cosa si tocca. Stessa regola dell'app (lib/colori.ts:
+     AZIONE). Il colore della sezione resta su titoli, bordi e icone del tipo. */
+  .btn-azione { background:var(--blue); color:#fff; }
   .btn-ghost { background:#242744; color:#cdd2ee; }
   .btn:disabled { opacity:.5; cursor:default; }
   .card { background:var(--card); border-radius:14px; padding:18px; }
@@ -39,19 +58,26 @@
   .ver { color:#4a4f78; font-size:11px; text-align:center; margin-top:10px; }
   .lista-card { background:var(--card2); border-left:4px solid var(--accent, var(--green)); border-radius:12px; padding:14px 16px; margin-bottom:10px; cursor:pointer; display:flex; align-items:center; justify-content:space-between; }
   .lista-card:hover { background:#20244a; }
-  .lista-nome { color:var(--accent, var(--green)); font-weight:700; font-size:17px; }
+  /* [REGOLA COLORI 09/09] Deciso da Aldo guardando la schermata Memo col viola:
+     l'accento NON tocca mai il TESTO. Vive sul bordo sinistro della card e
+     sull'icona, dove informa; sul testo urla. I nomi restano bianchi. */
+  .lista-nome { color:var(--txt); font-weight:700; font-size:17px; }
+  /* L'icona sta DENTRO .lista-nome e disegna con stroke="currentColor": senza
+     questa riga diventerebbe bianca insieme al testo. E' l'unico posto, con il
+     bordo della card, dove l'accento continua a vivere. */
+  .lista-nome svg { color:var(--accent, var(--green)); }
   /* [P4.2] Colore per sezione: ogni modulo definisce il suo --accent (colori identici
      all'app). Le classi condivise qui sopra ripiegano sul verde quando --accent non è
      impostato (login, home, profilo, Spesa), così quelle aree restano invariate. */
-  #mod-dafare       { --accent:#E4D93C; }
-  #mod-memo         { --accent:#27AE60; }
-  #mod-appuntamenti { --accent:#378ADD; }
-  #mod-scadenze     { --accent:#EF9F27; }
-  #mod-note         { --accent:#7F77DD; }
-  #mod-ricettario   { --accent:#D4537E; }
-  #mod-archivio     { --accent:#888780; }
-  #mod-calendario   { --accent:#2BB3C0; }
-  #mod-documenti    { --accent:#7986CB; }
+  #mod-dafare       { --accent:var(--tipo-todo); }         /* [09/09] era #E4D93C, un giallo che confliggeva con lo stato 'imminente' */
+  #mod-memo         { --accent:var(--tipo-memo); }         /* [09/09] era #27AE60 */
+  #mod-appuntamenti { --accent:var(--tipo-appuntamento); }
+  #mod-scadenze     { --accent:var(--tipo-scadenza); }
+  #mod-note         { --accent:var(--tipo-nota); }
+  #mod-ricettario   { --accent:var(--tipo-ricettario); }
+  #mod-archivio     { --accent:var(--tipo-archivio); }
+  #mod-calendario   { --accent:var(--tipo-calendario); }
+  #mod-documenti    { --accent:var(--tipo-documenti); }
   .badge { background:#1a3a1a; color:#4CAF50; border:1px solid #2e6e2e; border-radius:999px; padding:2px 10px; font-size:12px; font-weight:700; display:inline-flex; align-items:center; gap:4px; }
   .reparto-h { color:var(--green); font-size:12px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; margin:16px 0 4px; }
   .item { display:flex; align-items:center; gap:12px; padding:11px 4px; border-bottom:1px solid #20244a; }
@@ -446,7 +472,7 @@
       <button id="share-modal-close" class="iconbtn" title="Chiudi"></button>
     </div>
     <div id="share-modal-body"></div>
-    <button id="share-salva" class="btn btn-green" style="width:100%; margin-top:14px;">Salva</button>
+    <button id="share-salva" class="btn btn-azione" style="width:100%; margin-top:14px;">Salva</button>
   </div>
 </div>
 
@@ -542,7 +568,7 @@
         <button class="back" id="note-back"></button>
         <div class="between" style="margin:6px 0 12px;">
           <h2 style="margin:0;font-size:22px;display:flex;align-items:center;gap:8px;"><span id="note-tit-ic" style="color:#7F77DD;display:inline-flex;"></span> Note</h2>
-          <button id="note-nuova" class="btn btn-green" style="width:auto;padding:9px 15px;">Nuova nota</button>
+          <button id="note-nuova" class="btn btn-azione" style="width:auto;padding:9px 15px;">Nuova nota</button>
         </div>
         <div id="note-grid">
           <!-- colonna LISTA -->
@@ -603,7 +629,7 @@
         <button class="back" id="doc-back"></button>
         <div class="between" style="margin:6px 0 12px;">
           <h2 style="margin:0;font-size:22px;display:flex;align-items:center;gap:8px;"><span id="doc-tit-ic" style="color:#7986CB;display:inline-flex;"></span> Documenti</h2>
-          <button id="doc-allega" class="btn btn-green" style="width:auto;padding:9px 15px;">Allega documento</button>
+          <button id="doc-allega" class="btn btn-azione" style="width:auto;padding:9px 15px;">Allega documento</button>
         </div>
         <input type="file" id="doc-file" accept="application/pdf,image/*" style="display:none;">
         <div class="row" style="gap:8px;margin-bottom:14px;align-items:center;">
@@ -628,7 +654,7 @@
       </div>
       <div class="addbar" style="margin-bottom:16px;">
         <input id="nuova-lista" class="field" placeholder="Nome nuova lista…" />
-        <button id="add-lista" class="btn btn-green"></button>
+        <button id="add-lista" class="btn btn-azione"></button>
       </div>
       <div id="liste-container"></div>
       <div id="liste-vuoto" class="muted center hidden" style="padding:20px;">Nessuna lista. Creane una qui sopra!</div>
@@ -653,7 +679,7 @@
       <div id="articoli-vuoto" class="muted center hidden" style="padding:16px;">Nessun articolo. Aggiungine uno!</div>
       <div class="addbar">
         <input id="nuovo-articolo" class="field" placeholder="Aggiungi articolo…" autocomplete="off" />
-        <button id="add-articolo" class="btn btn-green"></button>
+        <button id="add-articolo" class="btn btn-azione"></button>
       </div>
       <div id="sugg-articoli" class="hidden" style="margin:-4px 0 8px; border:1px solid rgba(127,127,127,.25); border-radius:10px; overflow:hidden; max-height:280px; overflow-y:auto; background:rgba(18,28,48,.98);"></div>
       <div id="dettatura-bar" style="margin-top:10px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
@@ -683,7 +709,7 @@
           <div id="dafare-cat-vuoto" class="muted center hidden" style="padding:20px;">Nessuna categoria. Creane una qui sotto!</div>
           <div class="addbar" style="margin-top:14px;">
             <input id="dafare-nuova-cat" class="field" placeholder="Nome nuova categoria…" />
-            <button id="dafare-add-cat" class="btn btn-green"></button>
+            <button id="dafare-add-cat" class="btn btn-azione"></button>
           </div>
         </div>
       </div>
@@ -694,7 +720,7 @@
         <div id="dafare-task-empty" class="placeholder hidden">Scegli una categoria</div>
         <div id="dafare-task-body">
         <div class="between" style="margin:6px 0 4px;">
-          <h2 id="dafare-cat-titolo" style="margin:0; font-size:19px; color:var(--accent, var(--green));"></h2>
+          <h2 id="dafare-cat-titolo" style="margin:0; font-size:19px; color:var(--txt);"></h2>
         </div>
         <div class="sortbar">
           <span id="dafare-sort-ic" style="color:var(--blue); display:inline-flex;"></span>
@@ -708,7 +734,7 @@
         <div id="dafare-task-vuoto" class="muted center hidden" style="padding:16px;">Nessuna attività. Aggiungine una!</div>
         <div class="addbar">
           <input id="dafare-nuovo-task" class="field" placeholder="Aggiungi attività…" />
-          <button id="dafare-add-task" class="btn btn-green"></button>
+          <button id="dafare-add-task" class="btn btn-azione"></button>
         </div>
         <p class="muted" style="margin-top:8px;">Suggerimento: scrivi e premi Invio per aggiungere in serie.</p>
         </div><!-- /#dafare-task-body -->
@@ -733,14 +759,14 @@
             <div id="memo-cat-container"></div>
             <div class="addbar" style="margin-top:14px;">
               <input id="memo-nuova-cat" class="field" placeholder="Nuova categoria…" />
-              <button id="memo-add-cat" class="btn btn-green"></button>
+              <button id="memo-add-cat" class="btn btn-azione"></button>
             </div>
           </div>
         </div>
         <div id="memo-item-view" class="memo-col hidden">
           <button id="memo-back-btn" class="back"></button>
           <div class="between" style="margin:2px 0 6px;">
-            <h2 id="memo-cat-titolo" style="margin:0; font-size:17px; color:var(--accent, var(--green));"></h2>
+            <h2 id="memo-cat-titolo" style="margin:0; font-size:17px; color:var(--txt);"></h2>
           </div>
           <div class="sortbar">
             <span id="memo-sort-ic" style="color:var(--blue); display:inline-flex;"></span>
@@ -808,7 +834,7 @@
             </div>
             <input id="memo-file" type="file" accept="application/pdf,image/*" style="display:none" />
             <div style="display:flex; gap:10px;">
-              <button id="memo-salva" class="btn btn-green" style="flex:1;">Aggiungi memo</button>
+              <button id="memo-salva" class="btn btn-azione" style="flex:1;">Aggiungi memo</button>
               <button id="memo-annulla-edit" class="btn btn-ghost hidden">Annulla</button>
             </div>
           </div>
@@ -818,7 +844,7 @@
 
     <!-- ============ MODULO: SCADENZE ============ -->
     <div id="mod-scadenze" class="modulo hidden" style="margin-top:18px;">
-      <button id="scad-nuova" class="btn btn-green" style="width:100%; margin-bottom:14px; padding:12px; font-size:15px;">＋ Nuova Scadenza</button>
+      <button id="scad-nuova" class="btn btn-azione" style="width:100%; margin-bottom:14px; padding:12px; font-size:15px;">＋ Nuova Scadenza</button>
       <div class="addbar" style="margin-bottom:12px;">
         <span class="iconbtn" style="cursor:default;" id="scad-cerca-ic"></span>
         <input id="scad-cerca" class="field" style="margin:0;" placeholder="Cerca scadenza…" />
@@ -834,19 +860,19 @@
         <div id="scad-cat-container"></div>
         <div class="addbar" style="margin-top:14px;">
           <input id="scad-nuova-cat" class="field" placeholder="Nome nuova categoria…" />
-          <button id="scad-add-cat" class="btn btn-green" title="Aggiungi categoria"></button>
+          <button id="scad-add-cat" class="btn btn-azione" title="Aggiungi categoria"></button>
         </div>
       </div>
       <!-- Livello 2: sottocategorie -->
       <div id="scad-sub-view" class="scad-col hidden">
         <button id="scad-back-cat" class="back"></button>
         <div class="between" style="margin:6px 0 8px;">
-          <h2 id="scad-cat-titolo" style="margin:0; font-size:19px; color:var(--accent, var(--green));"></h2>
+          <h2 id="scad-cat-titolo" style="margin:0; font-size:19px; color:var(--txt);"></h2>
         </div>
         <div id="scad-sub-container"></div>
         <div class="addbar" id="scad-sub-addbar" style="margin-top:14px;">
           <input id="scad-nuova-sub" class="field" placeholder="Nome nuova sottocategoria…" />
-          <button id="scad-add-sub" class="btn btn-green" title="Aggiungi sottocategoria"></button>
+          <button id="scad-add-sub" class="btn btn-azione" title="Aggiungi sottocategoria"></button>
         </div>
         <div id="scad-sub-empty" class="placeholder hidden">Scegli una categoria</div>
       </div>
@@ -856,7 +882,7 @@
         <div id="scad-item-empty" class="placeholder hidden">Scegli una sottocategoria</div>
         <div id="scad-item-body">
         <div class="between" style="margin:6px 0 4px;">
-          <h2 id="scad-sub-titolo" style="margin:0; font-size:19px; color:var(--accent, var(--green));"></h2>
+          <h2 id="scad-sub-titolo" style="margin:0; font-size:19px; color:var(--txt);"></h2>
         </div>
         <div id="scad-item-container"></div>
         <div id="scad-item-vuoto" class="muted center hidden" style="padding:16px;">Nessuna scadenza. Tocca «＋ Nuova scadenza» per aggiungerne.</div>
@@ -942,7 +968,7 @@
             <button id="scad-modal-alleg-add" class="btn btn-ghost" style="width:auto; padding:8px 12px;">📎 Allega file</button>
           </div>
           <div style="display:flex; gap:10px;">
-            <button id="scad-salva" class="btn btn-green" style="flex:1;">Aggiungi scadenza</button>
+            <button id="scad-salva" class="btn btn-azione" style="flex:1;">Aggiungi scadenza</button>
             <button id="scad-annulla-edit" class="btn btn-ghost hidden">Annulla</button>
           </div>
           </div><!-- /.memo-form -->
@@ -967,7 +993,7 @@
       </div>
       <!-- colonna FORM -->
       <div class="scad-col">
-        <h2 style="margin:0 0 12px; font-size:16px; color:var(--accent, var(--green));">Nuovo appuntamento</h2>
+        <h2 style="margin:0 0 12px; font-size:16px; color:var(--txt);">Nuovo appuntamento</h2>
         <div class="memo-form">
         <input id="app-titolo" class="field" placeholder="Nuovo appuntamento…" />
         <div class="field" style="display:flex; align-items:center; gap:8px; padding:0 14px;">
@@ -1058,7 +1084,7 @@
         </div>
         <div id="app-form-allegati" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px;"></div>
         <div style="display:flex; gap:10px;">
-          <button id="app-salva" class="btn btn-green" style="flex:1;">Aggiungi appuntamento</button>
+          <button id="app-salva" class="btn btn-azione" style="flex:1;">Aggiungi appuntamento</button>
           <button id="app-annulla-edit" class="btn btn-ghost hidden">Annulla</button>
         </div>
         </div><!-- /.memo-form -->
@@ -1509,17 +1535,25 @@
 
   // ====== HOME (riepilogo + accesso rapido alle sezioni, come nell'app) ======
   let homeClockTimer = null;
+  // [PALETTE 09/09] Gemello JS delle variabili CSS qui sopra: il JavaScript non
+  // puo' leggere var(--...) quando scrive colori dentro oggetti dati.
+  const TIPO = {
+    scadenza: '#EF9F27', memo: '#A56BE8', appuntamento: '#378ADD', todo: '#5DCAA5',
+    nota: '#7F77DD', spesa: '#1D9E75', calendario: '#2BB3C0', ricettario: '#D4537E',
+    documenti: '#7986CB', archivio: '#888780',
+  };
+
   const SEZIONI_HOME = [
-    { key: 'dafare',       titolo: 'Da fare',      sub: 'Cose da fare',             icona: 'circle-check',    colore: '#E4D93C', wired: true },
-    { key: 'memo',         titolo: 'Memo',         sub: 'I tuoi promemoria',        icona: 'bell',            colore: '#27AE60', wired: true },
-    { key: 'appuntamenti', titolo: 'Appuntamenti', sub: 'I tuoi appuntamenti',      icona: 'calendar-event',  colore: '#378ADD', wired: true },
-    { key: 'scadenze',     titolo: 'Scadenze',     sub: 'Scadenze importanti',      icona: 'alarm',           colore: '#EF9F27', wired: true },
-    { key: 'note',         titolo: 'Note',         sub: 'Le tue note e appunti',    icona: 'bulb',            colore: '#7F77DD', wired: true },
-    { key: 'spesa',        titolo: 'Lista Spesa',  sub: 'Le tue liste della spesa', icona: 'shopping-cart',   colore: '#1D9E75', wired: true },
-    { key: 'archivio',     titolo: 'Archivio',     sub: 'Elementi archiviati',      icona: 'package',         colore: '#888780', wired: true },
-    { key: 'ricettario',   titolo: 'Ricettario',   sub: 'Le tue ricette',           icona: 'tools-kitchen-2', colore: '#D4537E', wired: true },
-    { key: 'calendario',   titolo: 'Calendario',   sub: 'Il tuo calendario',        icona: 'calendar-month',  colore: '#2BB3C0', wired: true },
-    { key: 'documenti',    titolo: 'Documenti',    sub: 'Biglietti e documenti',    icona: 'ticket',          colore: '#7986CB', wired: true },
+    { key: 'dafare',       titolo: 'Da fare',      sub: 'Cose da fare',             icona: 'circle-check',    colore: TIPO.todo, wired: true },
+    { key: 'memo',         titolo: 'Memo',         sub: 'I tuoi promemoria',        icona: 'bell',            colore: TIPO.memo, wired: true },
+    { key: 'appuntamenti', titolo: 'Appuntamenti', sub: 'I tuoi appuntamenti',      icona: 'calendar-event',  colore: TIPO.appuntamento, wired: true },
+    { key: 'scadenze',     titolo: 'Scadenze',     sub: 'Scadenze importanti',      icona: 'alarm',           colore: TIPO.scadenza, wired: true },
+    { key: 'note',         titolo: 'Note',         sub: 'Le tue note e appunti',    icona: 'bulb',            colore: TIPO.nota, wired: true },
+    { key: 'spesa',        titolo: 'Lista Spesa',  sub: 'Le tue liste della spesa', icona: 'shopping-cart',   colore: TIPO.spesa, wired: true },
+    { key: 'archivio',     titolo: 'Archivio',     sub: 'Elementi archiviati',      icona: 'package',         colore: TIPO.archivio, wired: true },
+    { key: 'ricettario',   titolo: 'Ricettario',   sub: 'Le tue ricette',           icona: 'tools-kitchen-2', colore: TIPO.ricettario, wired: true },
+    { key: 'calendario',   titolo: 'Calendario',   sub: 'Il tuo calendario',        icona: 'calendar-month',  colore: TIPO.calendario, wired: true },
+    { key: 'documenti',    titolo: 'Documenti',    sub: 'Biglietti e documenti',    icona: 'ticket',          colore: TIPO.documenti, wired: true },
   ];
   const GIORNI_IT = ['domenica', 'lunedì', 'martedì', 'mercoledì', 'giovedì', 'venerdì', 'sabato'];
   function oggiGGMMAAAA() { const d = new Date(); return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear(); }
@@ -1642,7 +1676,7 @@
     renderBannerNotifiche(bannerNotifSlot);
 
     // ===== 2) DATI: UNA SOLA CHIAMATA (con paracadute al vecchio metodo) =====
-    const coloreOggi = (key) => (key === 'appuntamenti' ? '#378ADD' : '#EF9F27');
+    const coloreOggi = (key) => (key === 'appuntamenti' ? TIPO.appuntamento : TIPO.scadenza);
     let usatoRpc = false;
     try {
       const { data, error } = await sb.rpc('get_home_data');
@@ -1684,15 +1718,15 @@
       scadenze: scad.filter(s => !s.completata).length,
     });
 
-    const memoOggi = memo.filter(m => m.data === oggi).map(m => ({ testo: m.testo, ora: m.ora, colore: '#27AE60', etichetta: 'Memo', key: 'memo', id: m.id, categoria: m.categoria, fatto: !!m.completato }));
-    const scadOggi = scad.filter(s => s.data === oggi).map(s => ({ testo: s.titolo, ora: s.ora, colore: '#EF9F27', etichetta: 'Scadenza', key: 'scadenze', id: s.id, categoria: s.categoria, sottocategoria: s.sottocategoria, fatto: !!s.completata }));
-    const appOggiItems = appOggi.map(a => ({ testo: a.titolo, ora: a.ora, colore: '#378ADD', etichetta: 'Appuntamento', key: 'appuntamenti', id: a.id, fatto: false, app: a }));   // [GPS] app = riga grezza per il badge
+    const memoOggi = memo.filter(m => m.data === oggi).map(m => ({ testo: m.testo, ora: m.ora, colore: TIPO.memo, etichetta: 'Memo', key: 'memo', id: m.id, categoria: m.categoria, fatto: !!m.completato }));
+    const scadOggi = scad.filter(s => s.data === oggi).map(s => ({ testo: s.titolo, ora: s.ora, colore: TIPO.scadenza, etichetta: 'Scadenza', key: 'scadenze', id: s.id, categoria: s.categoria, sottocategoria: s.sottocategoria, fatto: !!s.completata }));
+    const appOggiItems = appOggi.map(a => ({ testo: a.titolo, ora: a.ora, colore: TIPO.appuntamento, etichetta: 'Appuntamento', key: 'appuntamenti', id: a.id, fatto: false, app: a }));   // [GPS] app = riga grezza per il badge
     const itemsOggi = [...scadOggi, ...appOggiItems, ...memoOggi].sort((a, b) => { if (!!a.fatto !== !!b.fatto) return a.fatto ? 1 : -1; return (a.ora || '').localeCompare(b.ora || ''); });
     const domP = domaniGGMMAAAA();
     const itemsDomaniP = [
-      ...scad.filter(s => s.data === domP).map(s => ({ testo: s.titolo, ora: s.ora, colore: '#EF9F27', etichetta: 'Scadenza', key: 'scadenze', id: s.id, categoria: s.categoria, sottocategoria: s.sottocategoria, fatto: !!s.completata })),
-      ...app.filter(a => a.data === domP).map(a => ({ testo: a.titolo, ora: a.ora, colore: '#378ADD', etichetta: 'Appuntamento', key: 'appuntamenti', id: a.id, fatto: false, app: a })),
-      ...memo.filter(m => m.data === domP).map(m => ({ testo: m.testo, ora: m.ora, colore: '#27AE60', etichetta: 'Memo', key: 'memo', id: m.id, categoria: m.categoria, fatto: !!m.completato })),
+      ...scad.filter(s => s.data === domP).map(s => ({ testo: s.titolo, ora: s.ora, colore: TIPO.scadenza, etichetta: 'Scadenza', key: 'scadenze', id: s.id, categoria: s.categoria, sottocategoria: s.sottocategoria, fatto: !!s.completata })),
+      ...app.filter(a => a.data === domP).map(a => ({ testo: a.titolo, ora: a.ora, colore: TIPO.appuntamento, etichetta: 'Appuntamento', key: 'appuntamenti', id: a.id, fatto: false, app: a })),
+      ...memo.filter(m => m.data === domP).map(m => ({ testo: m.testo, ora: m.ora, colore: TIPO.memo, etichetta: 'Memo', key: 'memo', id: m.id, categoria: m.categoria, fatto: !!m.completato })),
     ].sort((a, b) => (a.ora || '').localeCompare(b.ora || ''));
     await caricaPrevisioniPartenzaWeb();   // [GPS] idem sul percorso di riserva
     renderOggiPerTe(oggiBox, itemsOggi, itemsDomaniP);
@@ -1732,17 +1766,17 @@
       ]);
       if (!oggiBox.isConnected) return;
       const memo = (mRes && mRes.data) || [], scad = (sRes && sRes.data) || [], app = (aRes && aRes.data) || [];
-      const memoOggi = memo.filter(m => m.data === oggi).map(m => ({ testo: m.testo, ora: m.ora, colore: '#27AE60', etichetta: 'Memo', key: 'memo', id: m.id, categoria: m.categoria, fatto: !!m.completato }));
-      const scadOggi = scad.filter(s => s.data === oggi).map(s => ({ testo: s.titolo, ora: s.ora, colore: '#EF9F27', etichetta: 'Scadenza', key: 'scadenze', id: s.id, categoria: s.categoria, sottocategoria: s.sottocategoria, fatto: !!s.completata }));
-      const appOggiItems = app.filter(a => a.data === oggi).map(a => ({ testo: a.titolo, ora: a.ora, colore: '#378ADD', etichetta: 'Appuntamento', key: 'appuntamenti', id: a.id, fatto: false, app: a }));   // [GPS] app = riga grezza per il badge
+      const memoOggi = memo.filter(m => m.data === oggi).map(m => ({ testo: m.testo, ora: m.ora, colore: TIPO.memo, etichetta: 'Memo', key: 'memo', id: m.id, categoria: m.categoria, fatto: !!m.completato }));
+      const scadOggi = scad.filter(s => s.data === oggi).map(s => ({ testo: s.titolo, ora: s.ora, colore: TIPO.scadenza, etichetta: 'Scadenza', key: 'scadenze', id: s.id, categoria: s.categoria, sottocategoria: s.sottocategoria, fatto: !!s.completata }));
+      const appOggiItems = app.filter(a => a.data === oggi).map(a => ({ testo: a.titolo, ora: a.ora, colore: TIPO.appuntamento, etichetta: 'Appuntamento', key: 'appuntamenti', id: a.id, fatto: false, app: a }));   // [GPS] app = riga grezza per il badge
       // da fare in cima, fatti (barrati) in fondo; a parità, per orario
       const items = [...scadOggi, ...appOggiItems, ...memoOggi].sort((a, b) => { if (!!a.fatto !== !!b.fatto) return a.fatto ? 1 : -1; return (a.ora || '').localeCompare(b.ora || ''); });
       // Programma di domani (stessi tipi di oggi): serve a organizzarsi la sera.
       const dom = domaniGGMMAAAA();
       const itemsDomani = [
-        ...scad.filter(s => s.data === dom).map(s => ({ testo: s.titolo, ora: s.ora, colore: '#EF9F27', etichetta: 'Scadenza', key: 'scadenze', id: s.id, categoria: s.categoria, sottocategoria: s.sottocategoria, fatto: !!s.completata })),
-        ...app.filter(a => a.data === dom).map(a => ({ testo: a.titolo, ora: a.ora, colore: '#378ADD', etichetta: 'Appuntamento', key: 'appuntamenti', id: a.id, fatto: false, app: a })),
-        ...memo.filter(m => m.data === dom).map(m => ({ testo: m.testo, ora: m.ora, colore: '#27AE60', etichetta: 'Memo', key: 'memo', id: m.id, categoria: m.categoria, fatto: !!m.completato })),
+        ...scad.filter(s => s.data === dom).map(s => ({ testo: s.titolo, ora: s.ora, colore: TIPO.scadenza, etichetta: 'Scadenza', key: 'scadenze', id: s.id, categoria: s.categoria, sottocategoria: s.sottocategoria, fatto: !!s.completata })),
+        ...app.filter(a => a.data === dom).map(a => ({ testo: a.titolo, ora: a.ora, colore: TIPO.appuntamento, etichetta: 'Appuntamento', key: 'appuntamenti', id: a.id, fatto: false, app: a })),
+        ...memo.filter(m => m.data === dom).map(m => ({ testo: m.testo, ora: m.ora, colore: TIPO.memo, etichetta: 'Memo', key: 'memo', id: m.id, categoria: m.categoria, fatto: !!m.completato })),
       ].sort((a, b) => (a.ora || '').localeCompare(b.ora || ''));
       await caricaPrevisioniPartenzaWeb();   // [GPS] senza, in Home la pillola di partenza non avrebbe dati
       renderOggiPerTe(oggiBox, items, itemsDomani);
@@ -1885,7 +1919,7 @@
     }
     desc.textContent = 'Ricevi i promemoria sul computer anche quando il sito è chiuso.';
     box.appendChild(desc);
-    const btn = document.createElement('button'); btn.className = 'btn btn-green'; btn.style.cssText = 'width:auto; padding:10px 16px;';
+    const btn = document.createElement('button'); btn.className = 'btn btn-azione'; btn.style.cssText = 'width:auto; padding:10px 16px;';
     btn.innerHTML = '<span style="display:inline-flex;vertical-align:-2px;margin-right:6px;">' + svg(IC.bell, 16) + '</span> Attiva su questo dispositivo';
     btn.onclick = attivaNotifichePush;
     box.appendChild(btn);
@@ -2154,7 +2188,7 @@
     });
     // crea gruppo
     const addbar = document.createElement('div'); addbar.className = 'addbar'; addbar.style.marginTop = '10px';
-    addbar.innerHTML = '<input id="prof-nuovo-gruppo" class="field" placeholder="Nome nuovo gruppo…" style="margin-bottom:0;"><button id="prof-crea-gruppo" class="btn btn-green">' + svg(IC.plus, 22) + '</button>';
+    addbar.innerHTML = '<input id="prof-nuovo-gruppo" class="field" placeholder="Nome nuovo gruppo…" style="margin-bottom:0;"><button id="prof-crea-gruppo" class="btn btn-azione">' + svg(IC.plus, 22) + '</button>';
     cont.appendChild(addbar);
     $('prof-crea-gruppo').onclick = profCreaGruppo;
     $('prof-nuovo-gruppo').addEventListener('keydown', e => { if (e.key === 'Enter') profCreaGruppo(); });
@@ -2616,9 +2650,9 @@
     memo:         { label: 'Memo',         colore: '#78909C', icona: 'bell' },
     appuntamento: { label: 'Appuntamenti', colore: '#2196F3', icona: 'calendar-event' },
     scadenza:     { label: 'Scadenze',     colore: '#FF9800', icona: 'alarm' },
-    todo:         { label: 'Da fare',      colore: '#E4D93C', icona: 'circle-check' },
-    note:         { label: 'Note',         colore: '#7F77DD', icona: 'bulb' },
-    lista_spesa:  { label: 'Lista spesa',  colore: '#1D9E75', icona: 'shopping-cart' },
+    todo:         { label: 'Da fare',      colore: TIPO.todo, icona: 'circle-check' },
+    note:         { label: 'Note',         colore: TIPO.nota, icona: 'bulb' },
+    lista_spesa:  { label: 'Lista spesa',  colore: TIPO.spesa, icona: 'shopping-cart' },
   };
   function archInfo(tipo) { return ARCH_TIPI[tipo] || { label: tipo, colore: '#607D8B', icona: 'package' }; }
   // Mappa per il ripristino: tabella di destinazione + colonne valide (come nell'app).
@@ -2748,7 +2782,10 @@
   // ====== CALENDARIO ======
   let calMese, calAnno, calSelGG, calApp = [], calScad = [], calMemo = [], calVista = 'mese';
   const calFiltri = { appuntamento: true, scadenza: true, memo: true };
-  const CAL_COLORI = { appuntamento: '#378ADD', scadenza: '#E24B4A', memo: '#27AE60' };
+  // [PALETTE 09/09] Il calendario del SITO aveva le stesse due cose sbagliate del
+  // calendario dell'app, scoperte e corrette lo stesso giorno: le scadenze rosse
+  // (il rosso e' riservato allo STATO, mai a un tipo - D2 del 31/08) e i memo verdi.
+  const CAL_COLORI = { appuntamento: TIPO.appuntamento, scadenza: TIPO.scadenza, memo: TIPO.memo };
   const CAL_MESI = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
   const CAL_GIORNI = ['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato'];
   const CAL_DOW = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
@@ -2867,7 +2904,7 @@
     const dayHead = document.createElement('div'); dayHead.className = 'cal-day-head';
     dayHead.style.cssText = 'display:flex; align-items:center; justify-content:space-between; gap:10px;';
     dayHead.innerHTML = '<span>' + escapeHtml(calTitoloGiorno(calSelGG)) + '</span>' +
-      '<button id="cal-add" class="btn btn-green" style="width:auto; padding:6px 11px; flex:0 0 auto;" title="Nuovo appuntamento in questo giorno">' + svg(IC.plus, 18) + '</button>';
+      '<button id="cal-add" class="btn btn-azione" style="width:auto; padding:6px 11px; flex:0 0 auto;" title="Nuovo appuntamento in questo giorno">' + svg(IC.plus, 18) + '</button>';
     root.appendChild(dayHead);
     dayHead.querySelector('#cal-add').onclick = () => nuovoAppuntamentoData(calSelGG);
     const lista = document.createElement('div'); lista.className = 'cal-day-list';
@@ -3346,7 +3383,7 @@
     const root = $('ric-root'); root.innerHTML = '';
     const head = document.createElement('div'); head.className = 'between'; head.style.margin = '6px 0 12px';
     head.innerHTML = '<h2 style="margin:0;font-size:22px;display:flex;align-items:center;gap:8px;"><span style="color:#D4537E;display:inline-flex;">' + svg(CAT_ICONS['tools-kitchen-2'], 24) + '</span> Ricettario</h2>' +
-      '<button id="ric-nuova" class="btn btn-green" style="width:auto;padding:9px 15px;">Nuova ricetta</button>';
+      '<button id="ric-nuova" class="btn btn-azione" style="width:auto;padding:9px 15px;">Nuova ricetta</button>';
     root.appendChild(head);
     const bar = document.createElement('div'); bar.className = 'row'; bar.style.cssText = 'gap:8px;margin-bottom:14px;align-items:center;';
     bar.innerHTML = '<input id="ric-cerca" class="field" placeholder="Cerca ricette…" style="margin-bottom:0;flex:1;" value="' + escapeHtml(ricCerca) + '">' +
@@ -3518,7 +3555,7 @@
       '<div class="nf-label">Nome</div><input id="rf-nome" class="field" placeholder="Nome della ricetta" value="' + escapeHtml((r && r.nome) || '') + '">' +
       '<div class="nf-label">Categoria</div><select id="rf-cat" class="field">' + catOpts + '</select>' +
       '<div class="nf-label">Ingredienti</div>' +
-      '<div class="ric-ing-adder"><input id="rf-ing-nome" class="field" placeholder="Ingrediente" style="margin-bottom:0;flex:2;"><input id="rf-ing-qta" class="field" placeholder="Q.tà" inputmode="decimal" style="margin-bottom:0;width:70px;"><select id="rf-ing-unita" class="field" style="margin-bottom:0;width:90px;">' + unitaOpts + '</select><button id="rf-ing-add" class="btn btn-green" style="width:auto;padding:0 14px;">' + svg(IC.plus, 20) + '</button></div>' +
+      '<div class="ric-ing-adder"><input id="rf-ing-nome" class="field" placeholder="Ingrediente" style="margin-bottom:0;flex:2;"><input id="rf-ing-qta" class="field" placeholder="Q.tà" inputmode="decimal" style="margin-bottom:0;width:70px;"><select id="rf-ing-unita" class="field" style="margin-bottom:0;width:90px;">' + unitaOpts + '</select><button id="rf-ing-add" class="btn btn-azione" style="width:auto;padding:0 14px;">' + svg(IC.plus, 20) + '</button></div>' +
       '<div id="rf-ing-sugg" class="hidden" style="margin:6px 0 0; border:1px solid rgba(127,127,127,.25); border-radius:10px; overflow:hidden; max-height:240px; overflow-y:auto; background:rgba(18,28,48,.98);"></div>' +
       '<div id="rf-ing-list" class="ric-ing-list"></div>' +
       '<div class="nf-label">Procedimento</div><textarea id="rf-proc" class="field" placeholder="Passaggi della preparazione…" style="min-height:130px;resize:vertical;">' + escapeHtml((r && r.procedimento) || '') + '</textarea>' +
@@ -3775,7 +3812,7 @@
     const ren = document.createElement('button'); ren.className = 'del'; ren.style.color = 'var(--blue)'; ren.innerHTML = svg(IC.pencil, 17); ren.title = 'Rinomina'; ren.onclick = () => rinominaDocumento(d);
     const del = document.createElement('button'); del.className = 'del'; del.innerHTML = svg(IC.trash, 17); del.title = 'Elimina'; del.onclick = () => eliminaDocumento(d);
     if (codiciDelDoc(d).length) {
-      const bc = document.createElement('button'); bc.className = 'del'; bc.style.color = 'var(--accent, var(--green))';
+      const bc = document.createElement('button'); bc.className = 'del'; bc.style.color = 'var(--blue)';
       bc.innerHTML = svg(IC.barcode, 17); bc.title = 'Mostra codice a barre'; bc.onclick = () => mostraCodiceBarre(d);
       az.appendChild(bc);
     }
@@ -4442,7 +4479,7 @@
   function renderListaEdit(div, l) {
     div.innerHTML = ''; div.onclick = null; div.style.gap = '8px';
     const input = document.createElement('input'); input.className = 'field'; input.style.margin = '0'; input.style.flex = '1'; input.value = l.nome || '';
-    const salva = document.createElement('button'); salva.className = 'iconbtn'; salva.style.color = 'var(--accent, var(--green))'; salva.title = 'Salva'; salva.innerHTML = svg(IC.checkSimple, 18);
+    const salva = document.createElement('button'); salva.className = 'iconbtn'; salva.style.color = 'var(--blue)'; salva.title = 'Salva'; salva.innerHTML = svg(IC.checkSimple, 18);
     const annulla = document.createElement('button'); annulla.className = 'iconbtn'; annulla.title = 'Annulla'; annulla.innerHTML = svg(IC.x, 18);
     const chiudi = () => div.replaceWith(freshListaCard(l));
     const doSave = async () => {
@@ -5047,7 +5084,7 @@
     const input = document.createElement('input');
     input.className = 'field'; input.style.margin = '0'; input.style.flex = '1'; input.value = t.testo;
     const salva = document.createElement('button');
-    salva.className = 'del'; salva.style.color = 'var(--accent, var(--green))'; salva.innerHTML = svg(IC.checkSimple, 20); salva.title = 'Salva';
+    salva.className = 'del'; salva.style.color = 'var(--blue)'; salva.innerHTML = svg(IC.checkSimple, 20); salva.title = 'Salva';
     const annulla = document.createElement('button');
     annulla.className = 'del'; annulla.innerHTML = svg(IC.x, 18); annulla.title = 'Annulla';
     const doSave = async () => {
@@ -5466,7 +5503,7 @@
   function titoloFormMemo(prefisso) {
     const t = $('memo-form-titolo'); if (!t) return;
     if (memoCatCorrente && memoCatCorrente.nome) {
-      t.innerHTML = escapeHtml(prefisso) + ' in <span style="color:var(--accent, var(--green));font-weight:700;">' + escapeHtml(memoCatCorrente.nome) + '</span>';
+      t.innerHTML = escapeHtml(prefisso) + ' in <span style="color:var(--txt);font-weight:700;">' + escapeHtml(memoCatCorrente.nome) + '</span>';
     } else { t.textContent = prefisso; }
   }
   // [NUOVO MEMO] Precompila data = oggi e ora = ora piena successiva (come in app).
@@ -6499,7 +6536,7 @@
     selCat.value = scadCat ? scadCat.id : ''; fillSub(selCat.value); selSub.value = scadSub ? scadSub.id : '';
     selCat.onchange = () => fillSub(selCat.value);
     row.append(selCat, selSub); card.appendChild(row);
-    const btn = document.createElement('button'); btn.className = 'btn btn-green'; btn.style.width = '100%'; btn.textContent = 'Sposta';
+    const btn = document.createElement('button'); btn.className = 'btn btn-azione'; btn.style.width = '100%'; btn.textContent = 'Sposta';
     btn.onclick = async () => { const catId = selCat.value, subId = selSub.value; if (!catId || !subId) { homeToast('Scegli categoria e sottocategoria'); return; } ov.remove(); await spostaScad(s, catId, subId); };
     card.appendChild(btn); ov.appendChild(card);
     ov.onclick = (e) => { if (e.target === ov) ov.remove(); };
@@ -8418,7 +8455,7 @@
         wrap.appendChild(chip);
         if (codiciDelDoc(d).length) {
           const bc = document.createElement('button'); bc.type = 'button'; bc.className = 'del'; bc.title = 'Mostra codice a barre';
-          bc.style.cssText = 'color:var(--accent, var(--green)); padding:2px 4px;'; bc.innerHTML = svg(IC.barcode, 15);
+          bc.style.cssText = 'color:var(--blue); padding:2px 4px;'; bc.innerHTML = svg(IC.barcode, 15);
           bc.onclick = () => mostraCodiceBarre(d);
           wrap.appendChild(bc);
         }
