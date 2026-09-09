@@ -4526,6 +4526,26 @@
     else notificaCambioSpesa();
   }
 
+  // [ARTICOLO MODIFICABILE] Prima, per correggere una lettera, si doveva
+  // cancellare l'articolo e riscriverlo. Su una lista CONDIVISA non e' innocuo:
+  // l'altra persona vede la riga sparire e ricomparire in fondo.
+  async function rinominaArticolo(a, nuovo, nomeEl) {
+    const prima = a.nome;
+    a.nome = nuovo;
+    if (nomeEl) nomeEl.textContent = nuovo;          // subito, senza aspettare la rete
+    const { error } = await sb.from('articoli_spesa').update({ nome: nuovo }).eq('id', a.id);
+    if (error) {
+      a.nome = prima;
+      if (nomeEl) nomeEl.textContent = prima;        // rimettiamo com'era: non mentiamo
+      homeToast('Errore rinomina: ' + error.message);
+      return;
+    }
+    notificaCambioSpesa();
+    // Il nome decide reparto e ordine alfabetico: dopo averlo cambiato la riga
+    // potrebbe non stare piu' dov'e'. Ricarichiamo in silenzio.
+    caricaArticoli(true);
+  }
+
   function rigaArticolo(a) {
     const div = document.createElement('div');
     div.className = 'item';
@@ -4535,6 +4555,30 @@
     const nome = document.createElement('div');
     nome.className = 'nome' + (a.spuntato ? ' done' : '');
     nome.textContent = a.nome;
+    // Stesso gesto della quantita' qui sotto: clicchi, diventa un campo,
+    // Invio salva, Esc annulla. Niente da imparare.
+    nome.style.cursor = 'text';
+    nome.title = 'Clicca per correggere il nome';
+    nome.onclick = () => {
+      const inp = document.createElement('input');
+      inp.type = 'text'; inp.className = 'field';
+      inp.style.flex = '1'; inp.style.minWidth = '0'; inp.style.margin = '0'; inp.style.padding = '5px 9px';
+      inp.value = a.nome || '';
+      nome.replaceWith(inp); inp.focus(); inp.select();
+      let done = false;
+      const ripristina = () => { done = true; nome.textContent = a.nome; inp.replaceWith(nome); };
+      const salva = () => {
+        if (done) return; done = true;
+        const v = inp.value.trim();
+        inp.replaceWith(nome);
+        // Un nome vuoto non e' una correzione, e' una cancellazione mascherata:
+        // se lo vuoi togliere c'e' il cestino.
+        if (v && v !== a.nome) rinominaArticolo(a, v, nome);
+        else nome.textContent = a.nome;
+      };
+      inp.addEventListener('keydown', e => { if (e.key === 'Enter') salva(); else if (e.key === 'Escape') ripristina(); });
+      inp.addEventListener('blur', salva);
+    };
     // Stepper quantità + menù unità.
     const qtaWrap = document.createElement('div');
     qtaWrap.style.display = 'inline-flex'; qtaWrap.style.alignItems = 'center'; qtaWrap.style.gap = '5px'; qtaWrap.style.flex = 'none';
