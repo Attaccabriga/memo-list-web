@@ -4394,6 +4394,8 @@
   // da FCM (viaggia su Supabase), quindi funziona anche senza VPN.
   function avviaRealtimeSpesa() {
     fermaRealtimeSpesa();
+    // [22/09] La strada nuova: gli avvisi vengono dal DATABASE (vedi sotto).
+    avviaCanaleListaWeb();
     const onEvento = (payload) => {
       if (!listaCorrente) return;
       if (payload && payload.lista_id != null && payload.lista_id !== listaCorrente.id) return;
@@ -4408,6 +4410,34 @@
   }
   function fermaRealtimeSpesa() {
     if (canaleSpesa) { try { sb.removeChannel(canaleSpesa); } catch (e) {} canaleSpesa = null; }
+    fermaCanaleListaWeb();
+  }
+
+  // ====== [22/09] IL CANALE DELLA LISTA — gli avvisi arrivano dal DATABASE ======
+  // Il canale 'spesa-sync' qui sopra funziona solo se chi tocca e' online in
+  // quel momento: e' il telefono che avvisa gli altri. Se tocca stando offline,
+  // al ritorno della linea a scrivere e' il server, e nessuno avvisa nessuno.
+  // Dal 22/09 un innesco sul database (migration 20260922 dell'app) pubblica
+  // ogni scrittura sul canale della lista: qui ci si iscrive.
+  // Canale PRIVATO: il permesso sta nel database (chi vede la lista, ascolta),
+  // e `setAuth()` manda il gettone dell'utente, senza il quale il server
+  // rifiuta l'iscrizione.
+  let canaleListaWeb = null;
+  async function avviaCanaleListaWeb() {
+    fermaCanaleListaWeb();
+    if (!listaCorrente || listaCorrente.id == null) return;
+    const idLista = listaCorrente.id;
+    try { await sb.realtime.setAuth(); } catch (e) { console.log('[SPESA-CANALE] setAuth fallito', e); }
+    if (!listaCorrente || listaCorrente.id !== idLista) return;   // lista chiusa nel frattempo
+    canaleListaWeb = sb.channel('spesa:' + idLista, { config: { private: true } })
+      .on('broadcast', { event: '*' }, () => {
+        if (!listaCorrente || listaCorrente.id !== idLista) return;
+        caricaArticoli(true);
+      })
+      .subscribe((stato) => console.log('[SPESA-CANALE] spesa:' + idLista + ' -> ' + stato));
+  }
+  function fermaCanaleListaWeb() {
+    if (canaleListaWeb) { try { sb.removeChannel(canaleListaWeb); } catch (e) {} canaleListaWeb = null; }
   }
   function notificaCambioSpesa() {
     if (!canaleSpesa || !listaCorrente) return;
