@@ -383,6 +383,42 @@
   .caltl-pill:hover { background:#232342; }
   .caltl-pill.on { background:var(--blue); border-color:var(--blue); color:#fff; }
   .caltl-sub { display:flex; align-items:center; gap:8px; margin-bottom:12px; }
+  /* ===== [ORGANIZZA 24/09] Calendario › Giorno › Ore | Organizza (mockup del sito, 24/09) ===== */
+  .org-seg { display:flex; background:var(--card); border-radius:10px; padding:3px; width:280px; max-width:100%; margin:0 auto 14px; }
+  .org-seg button { flex:1; background:none; border:none; color:var(--muted); font:inherit; font-size:14px; padding:7px 0; border-radius:8px; cursor:pointer; }
+  .org-seg button.on { background:#0f3460; color:#fff; font-weight:600; }
+  .org-due { display:grid; grid-template-columns:minmax(0,1fr) 340px; gap:18px; align-items:start; }
+  .org-due.senza-vassoio { grid-template-columns:minmax(0,1fr); }
+  @media (max-width:999px) { .org-due { grid-template-columns:minmax(0,1fr); } }
+  .org-lista { position:relative; }
+  .org-riga { display:flex; align-items:center; gap:10px; margin-bottom:6px; border-radius:11px; padding:10px 12px 10px 6px; background:#0f1d36; border-left:3px solid var(--c); cursor:pointer; position:relative; }
+  .org-riga:hover { background:#13224a; }
+  .org-riga.fisso { background:color-mix(in srgb, var(--c) 15%, var(--card)); border:1px solid color-mix(in srgb, var(--c) 40%, transparent); border-left:3px solid var(--c); padding-left:12px; }
+  .org-riga.trasc { box-shadow:0 14px 30px rgba(0,0,0,.65); background:#1b2e56; z-index:5; cursor:grabbing; opacity:.96; }
+  .org-man { display:inline-flex; color:rgba(255,255,255,.35); cursor:grab; padding:2px; touch-action:none; }
+  .org-man:hover { color:rgba(255,255,255,.7); }
+  .org-ck { width:18px; height:18px; border-radius:50%; border:1.5px solid var(--c); flex:none; cursor:pointer; }
+  .org-ck.f { background:var(--c); }
+  .org-t { flex:1; font-size:15px; color:#fff; min-width:0; }
+  .org-t.fatto { text-decoration:line-through; color:rgba(255,255,255,.4); }
+  .org-tipo { font-size:9.5px; letter-spacing:.8px; color:var(--c); }
+  .org-ora { width:48px; font-size:13px; font-weight:700; color:#fff; display:flex; flex-direction:column; line-height:1.15; flex:none; }
+  .org-ora small { font-weight:400; font-size:11px; color:rgba(255,255,255,.45); }
+  .org-luc { display:inline-flex; color:rgba(255,255,255,.45); }
+  .org-giu, .org-cest, .org-su { background:none; border:none; cursor:pointer; display:inline-flex; padding:2px 4px; }
+  .org-giu { color:rgba(255,255,255,.45); } .org-giu:hover { color:#fff; }
+  .org-cest { color:#E24B4A; visibility:hidden; } .org-riga:hover .org-cest { visibility:visible; }
+  .org-su { color:var(--blue); }
+  /* il posto dove cadra' la riga trascinata (mockup del sito, punto 1) */
+  .org-buco { position:absolute; left:0; right:0; border:2px dashed var(--blue); border-radius:11px; background:rgba(79,157,235,.10); pointer-events:none; z-index:1; }
+  .org-riga.scorre { transition:transform .16s ease; }
+  .org-nuova { display:flex; align-items:center; gap:8px; border:1px dashed #3a4670; border-radius:11px; padding:4px 12px; margin-top:8px; color:var(--blue); }
+  .org-nuova input { flex:1; background:none; border:none; outline:none; color:var(--txt); font:inherit; font-size:14px; padding:8px 0; }
+  .org-vassoio { background:var(--card); border-radius:14px; padding:14px; position:sticky; top:10px; }
+  .org-vtit { font-size:14px; font-weight:600; margin-bottom:4px; }
+  .org-vsub { font-size:12px; color:var(--muted); margin-bottom:12px; }
+  .org-vuota { color:rgba(255,255,255,.45); text-align:center; margin:20px; }
+  body.org-trascino, body.org-trascino * { cursor:grabbing !important; user-select:none; }
   .caltl-tit { flex:1; text-align:center; color:#fff; font-size:16px; font-weight:700; }
   .caltl-senza { border-bottom:1px solid #26264a; padding:2px 0 10px; margin-bottom:8px; }
   .caltl-senza-tit { color:#6b7194; font-size:11px; margin-bottom:4px; }
@@ -1230,6 +1266,11 @@
     'users': '<path d="M5 7a4 4 0 1 0 8 0a4 4 0 1 0 -8 0" /><path d="M3 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /><path d="M21 21v-2a4 4 0 0 0 -3 -3.85" />',
     'wallet': '<path d="M17 8v-3a1 1 0 0 0 -1 -1h-10a2 2 0 0 0 0 4h12a1 1 0 0 1 1 1v3m0 4v3a1 1 0 0 1 -1 1h-12a2 2 0 0 1 -2 -2v-12" /><path d="M20 12v4h-4a2 2 0 0 1 0 -4h4" />',
     'circle-check': '<path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0" /><path d="M9 12l2 2l4 -4" />',
+    // [ORGANIZZA 24/09] icone della giornata (le stesse registrate nell'app)
+    'lock': '<path d="M5 13a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v6a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-6z" /><path d="M11 16a1 1 0 1 0 2 0a1 1 0 0 0 -2 0" /><path d="M8 11v-4a4 4 0 1 1 8 0v4" />',
+    'grip-vertical': '<path d="M9 5m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" /><path d="M9 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" /><path d="M9 19m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" /><path d="M15 5m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" /><path d="M15 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" /><path d="M15 19m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />',
+    'arrow-up': '<path d="M12 5l0 14" /><path d="M18 11l-6 -6" /><path d="M6 11l6 -6" />',
+    'arrow-down': '<path d="M12 5l0 14" /><path d="M18 13l-6 6" /><path d="M6 13l6 6" />',
     'list-check': '<path d="M3.5 5.5l1.5 1.5l2.5 -2.5" /><path d="M3.5 11.5l1.5 1.5l2.5 -2.5" /><path d="M3.5 17.5l1.5 1.5l2.5 -2.5" /><path d="M11 6l9 0" /><path d="M11 12l9 0" /><path d="M11 18l9 0" />',   // [OGGI PER TE 24/09]
     'calendar-event': '<path d="M4 5m0 2a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2z" /><path d="M16 3v4" /><path d="M8 3v4" /><path d="M4 11h16" /><path d="M8 15h2v2h-2z" />',
     'package': '<path d="M12 3l8 4.5v9l-8 4.5l-8 -4.5v-9l8 -4.5" /><path d="M12 12l8 -4.5" /><path d="M12 12v9" /><path d="M12 12l-8 -4.5" /><path d="M16 5.25l-8 4.5" />',
@@ -2891,6 +2932,8 @@
 
   // ====== CALENDARIO ======
   let calMese, calAnno, calSelGG, calApp = [], calScad = [], calMemo = [], calVista = 'mese';
+  // [ORGANIZZA 24/09] dati in piu' per la vista Organizza + la modalita' del Giorno.
+  let calTodos = [], calAttivita = [], calGiornate = [], calModoGiorno = 'ore';
   const calFiltri = { appuntamento: true, scadenza: true, memo: true };
   // [PALETTE 09/09] Il calendario del SITO aveva le stesse due cose sbagliate del
   // calendario dell'app, scoperte e corrette lo stesso giorno: le scadenze rosse
@@ -2913,20 +2956,33 @@
 
   function mostraCalendario() { $('cal-tit-ic').innerHTML = svg(CAT_ICONS['calendar-month'], 22); $('cal-back').innerHTML = svg(IC.chevronLeft, 22) + ' Home'; }
 
+  // [ORGANIZZA 24/09] Ricarica i dati del calendario SENZA cambiare giorno/mese:
+  // Organizza la usa dopo ogni spunta, e non deve riportarti su oggi.
+  async function calRicaricaDati() {
+    const [aRes, sRes, mRes, tRes, atRes, gRes] = await Promise.all([
+      sb.from('appuntamenti').select('id, client_id, titolo, data, ora, ora_fine'),
+      sb.from('scadenze').select('id, titolo, data, ora, completata, categoria, sottocategoria'),
+      sb.from('todos_scadenza').select('*'),   // tutto: la spunta di un memo ricorrente crea l'occorrenza dopo
+      sb.from('todos').select('id, client_id, testo, data, completato, categoria, user_id'),
+      sb.from('attivita').select('id, client_id, testo, data, fatto'),
+      sb.from('giornate').select('id, client_id, user_id, data, ordine'),
+    ]);
+    calApp = aRes.data || []; calScad = sRes.data || []; calMemo = mRes.data || [];
+    calTodos = (tRes && tRes.data) || []; calAttivita = (atRes && atRes.data) || []; calGiornate = (gRes && gRes.data) || [];
+  }
+
   async function caricaCalendario() {
     const root = $('cal-root'); root.innerHTML = '<p class="muted">Caricamento…</p>';
     const oggi = new Date();
     calMese = oggi.getMonth(); calAnno = oggi.getFullYear(); calSelGG = calFmt(oggi);
     if (calGiornoPendente) {   // [OGGI PER TE 24/09] richiesto dalla Home
-      const p = (calGiornoPendente.gg || '').split('/'); calGiornoPendente = null;
+      const p = (calGiornoPendente.gg || '').split('/'); const modoPend = calGiornoPendente.modo || 'ore'; calGiornoPendente = null;
       if (p.length === 3) { calVista = 'giorno'; calSelGG = p.join('/'); calMese = parseInt(p[1], 10) - 1; calAnno = parseInt(p[2], 10); }
+      calModoGiorno = modoPend;   // [ORGANIZZA 24/09] bottone e attivita' aprono Organizza
+    } else {
+      calModoGiorno = 'ore';      // entrata normale: come nell'app, si riparte da «Ore»
     }
-    const [aRes, sRes, mRes] = await Promise.all([
-      sb.from('appuntamenti').select('id, titolo, data, ora, ora_fine'),
-      sb.from('scadenze').select('id, titolo, data, ora, completata, categoria, sottocategoria'),
-      sb.from('todos_scadenza').select('id, testo, data, ora, completato, categoria'),
-    ]);
-    calApp = aRes.data || []; calScad = sRes.data || []; calMemo = mRes.data || [];
+    await calRicaricaDati();   // [ORGANIZZA 24/09] i dati si ricaricano anche senza tornare a oggi
     renderCalendario();
   }
 
@@ -3101,8 +3157,7 @@
   const CAL_DEEP = { appuntamenti: true, memo: true, scadenze: true };
   let calApriTarget = null; // { modulo, id, categoria, sottocategoria } in attesa di evidenziazione dopo il render
   // [OGGI PER TE 24/09] Apre il Calendario sulla vista Giorno di una data precisa.
-  // `modo` = 'organizza' per il bottone e le attivita': finche' il sito non ha la vista
-  // Organizza (passo successivo) apre la vista Giorno normale.
+  // `modo` = 'organizza' per il bottone e le attivita': apre Giorno › Organizza.
   let calGiornoPendente = null;
   function calApriGiorno(gg, modo) { calGiornoPendente = { gg: calNorm(gg), modo: modo || 'ore' }; switchModulo('calendario'); }
   function calVaiAElemento(ev) {
@@ -3163,6 +3218,254 @@
 
   // Vista timeline. Per ora gestisce il GIORNO (1 colonna); 3 giorni / Settimana
   // arriveranno nello step successivo riusando questa stessa matematica.
+  // ====== [ORGANIZZA 24/09] LA REGOLA DELLA GIORNATA, COPIATA DALL'APP ======
+  // Traduzione riga per riga di lib/giornata.ts dell'app, con gli STESSI NOMI:
+  // se la regola cambia la', si cambia qui. Verificata facendole passare gli
+  // stessi test dell'app (__tests__/giornata.test.js).
+  //  - FISSI: appuntamenti e memo CON ORA, sempre nell'ordine delle ore.
+  //  - LIBERI: Da fare con quel giorno, memo SENZA ora, attivita'.
+  //  - Si salva (giornate.ordine) solo la fila dei liberi, ognuno col fisso
+  //    `dopo` cui sta. Il sito scrive nella STESSA riga dell'app.
+  function idStabile(x) { return String((x && (x.client_id || x.id)) ?? ''); }
+  function gioMinuti(ora) { if (!ora) return 24 * 60; const p = ora.split(':').map(Number); return (p[0] || 0) * 60 + (p[1] || 0); }
+  function vociDelGiorno(dataIt, eventi, todos, attivita) {
+    const fissi = [], liberi = [];
+    for (const ev of eventi || []) {
+      if (!ev || ev.tipo === 'scadenza') continue;
+      const tipo = ev.tipo;
+      const voce = {
+        chiave: tipo + '-' + idStabile(ev.raw || { id: ev.id }), tipo, fisso: !!ev.ora,
+        titolo: ev.titolo, ora: ev.ora, oraFine: ev.oraFine, fatto: !!(ev.raw && ev.raw.completato), raw: ev.raw,
+      };
+      if (voce.fisso) fissi.push(voce); else liberi.push({ ...voce, ora: null, oraFine: null });
+    }
+    for (const t of todos || []) {
+      if (!t || t.data !== dataIt) continue;
+      liberi.push({ chiave: 'todo-' + idStabile(t), tipo: 'todo', fisso: false, titolo: t.testo || '', ora: null, oraFine: null, fatto: !!t.completato, raw: t });
+    }
+    for (const a of attivita || []) {
+      if (!a || a.data !== dataIt) continue;
+      liberi.push({ chiave: 'attivita-' + idStabile(a), tipo: 'attivita', fisso: false, titolo: a.testo || '', ora: null, oraFine: null, fatto: !!a.fatto, raw: a });
+    }
+    fissi.sort((x, y) => gioMinuti(x.ora) - gioMinuti(y.ora));
+    return { fissi, liberi };
+  }
+  function gioChiaveOrdine(o) { return o.t + '-' + o.id; }
+  function componiGiornata(fissi, liberi, ordine) {
+    const perChiave = new Map(liberi.map(v => [v.chiave, v]));
+    const fissiPresenti = new Set(fissi.map(f => f.chiave));
+    const tratti = new Map(); tratti.set(null, []);
+    for (const f of fissi) tratti.set(f.chiave, []);
+    const usati = new Set(); let trattoPrec = null;
+    for (const o of ordine || []) {
+      const v = perChiave.get(gioChiaveOrdine(o));
+      if (!v || usati.has(v.chiave)) continue;
+      const tratto = o.dopo === null ? null : fissiPresenti.has(o.dopo) ? o.dopo : trattoPrec;
+      tratti.get(tratto).push(v); usati.add(v.chiave); trattoPrec = tratto;
+    }
+    const inFondo = [], vassoio = [];
+    for (const v of liberi) { if (usati.has(v.chiave)) continue; if (v.tipo === 'attivita') inFondo.push(v); else vassoio.push(v); }
+    const lista = [...tratti.get(null)];
+    for (const f of fissi) lista.push(f, ...tratti.get(f.chiave));
+    lista.push(...inFondo);
+    return { lista, vassoio };
+  }
+  function ordineDaLista(lista) {
+    const out = []; let ultimoFisso = null;
+    for (const v of lista) { if (v.fisso) { ultimoFisso = v.chiave; continue; } out.push({ t: v.tipo, id: v.chiave.slice(v.tipo.length + 1), dopo: ultimoFisso }); }
+    return out;
+  }
+  function sposta(lista, da, a) {
+    if (da < 0 || da >= lista.length || a < 0 || a >= lista.length || da === a) return lista;
+    if (lista[da].fisso) return lista;
+    const nuova = [...lista]; const [v] = nuova.splice(da, 1); nuova.splice(a, 0, v); return nuova;
+  }
+  function inserisci(lista, voce, a) {
+    const nuova = lista.filter(v => v.chiave !== voce.chiave);
+    const pos = Math.max(0, Math.min(a, nuova.length)); nuova.splice(pos, 0, voce); return nuova;
+  }
+  function togli(lista, chiave) {
+    const v = lista.find(x => x.chiave === chiave);
+    if (!v || v.fisso || v.tipo === 'attivita') return lista;
+    return lista.filter(x => x.chiave !== chiave);
+  }
+  function clientIdGiornata(userId, dataIt) { return userId + ':' + dataIt; }
+
+  // ====== [ORGANIZZA 24/09] LA VISTA ORGANIZZA DEL SITO (mockup del sito, 24/09) ======
+  // Qui c'e' solo il disegno e i gesti: tutta la regola sta nelle funzioni qui sopra.
+  // Differenze dall'app decise da Aldo: si trascina col mouse dalla maniglia; le
+  // attivita' si eliminano col cestino al passaggio del mouse; il vassoio sta di lato.
+  const ORG_COLORE = { appuntamento: TIPO.appuntamento, memo: TIPO.memo, todo: TIPO.todo, attivita: '#C9B28E' };
+  const ORG_ETIC = { memo: 'MEMO', todo: 'DA FARE', attivita: 'ATTIVITÀ' };
+  let orgBloccaClick = 0;   // dopo un trascinamento il "click" finale non deve aprire la voce
+
+  // Gli eventi del giorno come li da' eventiDelGiorno nell'app (tutti, senza filtri).
+  function eventiOrganizza(dataIt) {
+    const out = [];
+    calApp.forEach(a => { if (calNorm(a.data) === dataIt) out.push({ tipo: 'appuntamento', id: String(a.id), titolo: a.titolo || 'Appuntamento', ora: a.ora || null, oraFine: a.ora_fine || null, raw: a }); });
+    calMemo.forEach(m => { if (calNorm(m.data) === dataIt) out.push({ tipo: 'memo', id: String(m.id), titolo: m.testo || 'Memo', ora: m.ora || null, oraFine: null, raw: m }); });
+    return out.sort((x, y) => { if (x.ora && y.ora) return x.ora.localeCompare(y.ora); if (x.ora) return -1; if (y.ora) return 1; return 0; });
+  }
+  function giornataComposta(dataIt) {
+    const { fissi, liberi } = vociDelGiorno(dataIt, eventiOrganizza(dataIt), calTodos, calAttivita);
+    const riga = calGiornate.find(g => g.data === dataIt && g.user_id === userId);
+    return componiGiornata(fissi, liberi, riga ? riga.ordine : null);
+  }
+
+  // Salva la fila nella STESSA riga dell'app (client_id deterministico utente:giorno).
+  async function salvaOrdineGiornataWeb(dataIt, lista) {
+    const ordine = ordineDaLista(lista);
+    const cid = clientIdGiornata(userId, dataIt);
+    const riga = calGiornate.find(g => g.client_id === cid);
+    if (riga) riga.ordine = ordine; else calGiornate.push({ client_id: cid, user_id: userId, data: dataIt, ordine });
+    renderCalendario();   // ottimistico: si vede subito
+    const { error } = await sb.from('giornate').upsert(
+      { client_id: cid, user_id: userId, data: dataIt, ordine, updated_at: new Date().toISOString() },
+      { onConflict: 'client_id' });
+    if (error) { homeToast('Errore salvataggio giornata: ' + error.message); await calRicaricaDati(); renderCalendario(); }
+  }
+
+  async function orgSpunta(v) {
+    const nuovo = !v.fatto;
+    if (v.tipo === 'attivita') {
+      v.raw.fatto = nuovo; renderCalendario();
+      const { error } = await sb.from('attivita').update({ fatto: nuovo }).eq('id', v.raw.id);
+      if (error) { homeToast('Errore: ' + error.message); await calRicaricaDati(); renderCalendario(); }
+      return;
+    }
+    v.raw.completato = nuovo; renderCalendario();
+    if (v.tipo === 'todo') await toggleTask(v.raw.id, nuovo);
+    else if (v.tipo === 'memo') await toggleMemo(v.raw.id, nuovo, v.raw);   // passa il memo: serve alle ripetizioni
+    await calRicaricaDati(); renderCalendario();
+  }
+  function orgApri(v) {
+    if (Date.now() - orgBloccaClick < 350) return;
+    if (v.tipo === 'appuntamento') calVaiAElemento({ modulo: 'appuntamenti', id: v.raw.id });
+    else if (v.tipo === 'memo') calVaiAElemento({ modulo: 'memo', id: v.raw.id, categoria: v.raw.categoria });
+    else if (v.tipo === 'todo') { dafareApriPendente = { nome: v.raw.categoria, id: String(v.raw.id) }; switchModulo('dafare'); }
+  }
+  async function orgAggiungiAttivita(dataIt, testo) {
+    const { data, error } = await sb.from('attivita').insert([{ client_id: uuid(), user_id: userId, data: dataIt, testo, fatto: false }]).select().single();
+    if (error) { homeToast('Errore: ' + error.message); return; }
+    calAttivita.push(data); renderCalendario();
+    const inp = document.querySelector('.org-nuova input'); if (inp) inp.focus();
+  }
+  async function orgEliminaAttivita(v) {
+    const ok = await confermaPopup('«' + v.titolo + '»', { titolo: 'Eliminare questa attività?', ok: 'Elimina', pericolo: true });
+    if (!ok) return;
+    calAttivita = calAttivita.filter(a => a.id !== v.raw.id); renderCalendario();
+    const { error } = await sb.from('attivita').delete().eq('id', v.raw.id);
+    if (error) { homeToast('Errore: ' + error.message); await calRicaricaDati(); renderCalendario(); }
+  }
+
+  // Trascinamento col mouse (e col dito su tablet): parte SOLO dalla maniglia.
+  // [24/09, seconda versione] Come nell'app: mentre trascini, le altre righe SCORRONO
+  // davvero per aprire lo spazio, e nello spazio c'e' il riquadro tratteggiato azzurro.
+  // Tutte le misure si prendono all'inizio: le righe si spostano solo con transform,
+  // l'ordine vero cambia soltanto al rilascio, con sposta() (la stessa dell'app).
+  function orgIniziaTrascina(e, riga, da, lista, dataIt) {
+    e.preventDefault(); e.stopPropagation();
+    const cont = riga.parentElement;
+    const tutte = [...cont.querySelectorAll('.org-riga')];            // nell'ordine della lista
+    const altri = tutte.filter(el => el !== riga);
+    const GAP = 6;                                                      // margin-bottom delle righe
+    const cr0 = cont.getBoundingClientRect();
+    const misure = altri.map(el => { const r = el.getBoundingClientRect(); return { top: r.top - cr0.top, h: r.height }; });
+    const hRiga = riga.getBoundingClientRect().height;
+    const passo = hRiga + GAP;                                          // di quanto scorre una riga
+    const baseTop = tutte[0].getBoundingClientRect().top - cr0.top;     // dove comincia la lista
+    const y0 = e.clientY;
+
+    const buco = document.createElement('div'); buco.className = 'org-buco';
+    buco.style.height = hRiga + 'px'; cont.appendChild(buco);
+    altri.forEach(el => el.classList.add('scorre'));
+    riga.classList.add('trasc'); document.body.classList.add('org-trascino');
+
+    let a = da;
+    const muovi = (ev) => {
+      riga.style.transform = 'translateY(' + (ev.clientY - y0) + 'px) scale(1.01)';
+      // posizione del puntatore rispetto alla lista, contando anche se la pagina scorre
+      const y = ev.clientY - cont.getBoundingClientRect().top;
+      a = 0;
+      misure.forEach(m => { if (y > m.top + m.h / 2) a++; });
+      // le altre righe: chi finisce sotto la riga trascinata scende, chi finisce sopra sale
+      altri.forEach((el, k) => {
+        const origine = k < da ? k : k + 1;        // posto nella lista completa, prima
+        const arrivo = k < a ? k : k + 1;          // posto nella lista completa, dopo
+        el.style.transform = arrivo === origine ? '' : 'translateY(' + ((arrivo - origine) * passo) + 'px)';
+      });
+      // il riquadro tratteggiato: esattamente dove cadra' la riga
+      let top = baseTop;
+      for (let k = 0; k < a; k++) top += misure[k].h + GAP;
+      buco.style.top = top + 'px';
+    };
+    const fine = () => {
+      document.removeEventListener('pointermove', muovi); document.removeEventListener('pointerup', fine); document.removeEventListener('pointercancel', fine);
+      altri.forEach(el => { el.classList.remove('scorre'); el.style.transform = ''; });
+      riga.classList.remove('trasc'); riga.style.transform = ''; buco.remove(); document.body.classList.remove('org-trascino');
+      orgBloccaClick = Date.now();
+      if (a !== da) salvaOrdineGiornataWeb(dataIt, sposta(lista, da, a));
+    };
+    document.addEventListener('pointermove', muovi); document.addEventListener('pointerup', fine); document.addEventListener('pointercancel', fine);
+    muovi(e);
+  }
+
+  function rigaOrganizza(v, i, lista, dataIt) {
+    const r = document.createElement('div');
+    r.className = 'org-riga' + (v.fisso ? ' fisso' : '');
+    r.style.setProperty('--c', ORG_COLORE[v.tipo]);
+    const ck = '<span class="org-ck' + (v.fatto ? ' f' : '') + '"></span>';
+    const tit = '<span class="org-t' + (v.fatto ? ' fatto' : '') + '">' + escapeHtml(v.titolo) + '</span>';
+    if (v.fisso) {
+      r.innerHTML = '<span class="org-ora">' + escapeHtml(v.ora) + (v.oraFine ? '<small>' + escapeHtml(v.oraFine) + '</small>' : '') + '</span>' +
+        (v.tipo === 'memo' ? ck : '') + tit + '<span class="org-luc">' + svg(ico('lock'), 14) + '</span>';
+    } else {
+      r.innerHTML = '<span class="org-man" title="Trascina">' + svg(ico('grip-vertical'), 18) + '</span>' + ck + tit +
+        '<span class="org-tipo">' + ORG_ETIC[v.tipo] + '</span>' +
+        (v.tipo === 'attivita'
+          ? '<button type="button" class="org-cest" title="Elimina attività">' + svg(IC.trash, 15) + '</button>'
+          : '<button type="button" class="org-giu" title="Rimetti tra quelli non ancora in ordine">' + svg(ico('arrow-down'), 17) + '</button>');
+      r.querySelector('.org-man').addEventListener('pointerdown', (e) => orgIniziaTrascina(e, r, i, lista, dataIt));
+      const giu = r.querySelector('.org-giu'); if (giu) giu.onclick = (e) => { e.stopPropagation(); salvaOrdineGiornataWeb(dataIt, togli(lista, v.chiave)); };
+      const cest = r.querySelector('.org-cest'); if (cest) cest.onclick = (e) => { e.stopPropagation(); orgEliminaAttivita(v); };
+    }
+    const c = r.querySelector('.org-ck'); if (c) c.onclick = (e) => { e.stopPropagation(); orgSpunta(v); };
+    r.onclick = () => orgApri(v);
+    return r;
+  }
+
+  function renderOrganizza(root) {
+    const dataIt = calSelGG;
+    const { lista, vassoio } = giornataComposta(dataIt);
+    const wrap = document.createElement('div'); wrap.className = 'org-due' + (vassoio.length ? '' : ' senza-vassoio');
+    const sx = document.createElement('div');
+    const col = document.createElement('div'); col.className = 'org-lista';
+    if (!lista.length) col.innerHTML = '<p class="org-vuota">Niente in programma. Aggiungi un\'attività qui sotto.</p>';
+    lista.forEach((v, i) => col.appendChild(rigaOrganizza(v, i, lista, dataIt)));
+    sx.appendChild(col);
+    const nuova = document.createElement('div'); nuova.className = 'org-nuova';
+    nuova.innerHTML = svg(IC.plus, 18) + '<input type="text" placeholder="Aggiungi attività…" />';
+    const inp = nuova.querySelector('input');
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') { const t = inp.value.trim(); if (t) { inp.value = ''; orgAggiungiAttivita(dataIt, t); } } });
+    sx.appendChild(nuova);
+    wrap.appendChild(sx);
+    if (vassoio.length) {
+      const vs = document.createElement('div'); vs.className = 'org-vassoio';
+      vs.innerHTML = '<div class="org-vtit">Di questo giorno, non ancora in ordine</div><div class="org-vsub">↑ lo porta in fondo alla giornata, poi lo trascini al suo posto</div>';
+      vassoio.forEach(v => {
+        const r = document.createElement('div'); r.className = 'org-riga'; r.style.setProperty('--c', ORG_COLORE[v.tipo]); r.style.paddingLeft = '12px';
+        r.innerHTML = '<span class="org-ck' + (v.fatto ? ' f' : '') + '"></span><span class="org-t' + (v.fatto ? ' fatto' : '') + '">' + escapeHtml(v.titolo) + '</span>' +
+          '<span class="org-tipo">' + ORG_ETIC[v.tipo] + '</span><button type="button" class="org-su" title="Metti nella giornata">' + svg(ico('arrow-up'), 19) + '</button>';
+        r.querySelector('.org-ck').onclick = (e) => { e.stopPropagation(); orgSpunta(v); };
+        r.querySelector('.org-su').onclick = (e) => { e.stopPropagation(); salvaOrdineGiornataWeb(dataIt, inserisci(lista, v, lista.length)); };
+        r.onclick = () => orgApri(v);
+        vs.appendChild(r);
+      });
+      wrap.appendChild(vs);
+    }
+    root.appendChild(wrap);
+  }
+
   function renderTimeline(root) {
     if (calTlTimer) { clearInterval(calTlTimer); calTlTimer = null; }
     const oggiIt = calFmt(new Date());
@@ -3178,6 +3481,17 @@
     oggiBtn.onclick = () => { calSelGG = oggiIt; renderCalendario(); };
     sub.appendChild(prev); sub.appendChild(tit); sub.appendChild(next); sub.appendChild(oggiBtn);
     root.appendChild(sub);
+
+    // [ORGANIZZA 24/09] Ore | Organizza. «Ore» resta com'era.
+    const seg = document.createElement('div'); seg.className = 'org-seg';
+    [['ore', 'Ore'], ['organizza', 'Organizza']].forEach(([k, l]) => {
+      const b = document.createElement('button'); b.type = 'button'; b.textContent = l;
+      if (calModoGiorno === k) b.className = 'on';
+      b.onclick = () => { calModoGiorno = k; renderCalendario(); };
+      seg.appendChild(b);
+    });
+    root.appendChild(seg);
+    if (calModoGiorno === 'organizza') { renderOrganizza(root); return; }
 
     // --- filtri (stesso stato del mese) ---
     root.appendChild(calBarraFiltri());
@@ -6153,11 +6467,14 @@
     return true;
   }
 
-  async function toggleMemo(id, completato) {
-    const m = memoItemsCaricati.find(x => x.id === id);
+  async function toggleMemo(id, completato, memoDiretto) {
+    // [ORGANIZZA 24/09] da Organizza il memo non e' nella lista della sezione Memo:
+    // lo si passa direttamente, altrimenti l'occorrenza dopo di un ricorrente non nasce.
+    const dallaLista = memoItemsCaricati.find(x => x.id === id);
+    const m = dallaLista || memoDiretto;
     const completato_il = completato ? new Date().toISOString() : null;
     // [VELOCITÀ] ottimistico: aggiorna subito stato locale + schermata, poi sincronizza
-    if (m) { m.completato = completato; m.completato_il = completato_il; renderMemoLista(); }
+    if (m) { m.completato = completato; m.completato_il = completato_il; if (dallaLista) renderMemoLista(); }
     const { error } = await sb.from('todos_scadenza').update({ completato, completato_il }).eq('id', id);
     if (error) { homeToast('Errore: ' + error.message); await caricaMemoItems(); return; }
     mostraPromemoriaHint();
@@ -6170,7 +6487,7 @@
             const occNum = (m.occorrenza_numero || 1) + 1;
             const childId = await idOccorrenzaRicorrente(m.client_id, occNum);
             const { error: insErr } = await sb.from('todos_scadenza').insert([{
-              client_id: childId, testo: m.testo, categoria: memoCatCorrente.nome,
+              client_id: childId, testo: m.testo, categoria: memoCatCorrente ? memoCatCorrente.nome : m.categoria,
               data: prossima.data, ora: prossima.ora || '', nota: m.nota || '',
               completato: false, completato_il: null, ripetizione: m.ripetizione,
               giornomese: m.giornomese, intervallo_minuti: m.intervallo_minuti,
