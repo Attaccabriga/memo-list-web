@@ -3202,17 +3202,25 @@
     }
 
     // eventi: appuntamenti = blocco alto quanto durano; memo/scadenze = sola scritta
-    let ultimaBaseTesto = -Infinity;
+    // [24/09] ACCAVALLAMENTI, stessa regola dell'app (c5bf180): un memo o una scadenza
+    // che cade DENTRO l'orario di un appuntamento veniva scritto sopra il suo blocco
+    // (visto da Aldo: memo 12:40 sopra l'appuntamento 12:00-13:00). Ora stanno
+    // AFFIANCATI: l'appuntamento nella meta' sinistra, il memo nella meta' destra,
+    // con due "righe di base" separate (un testo a destra non spinge giu' uno a sinistra).
+    const tlFineAppt = (ev) => { const i = tlMinuti(ev.ora); let f = tlMinuti(ev.oraFine); if (f == null || f <= i) f = i + 60; return f; };
+    const tlBlocchi = conOra.filter(ev => ev.tipo === 'appuntamento').map(ev => ({ i: tlMinuti(ev.ora), f: tlFineAppt(ev) }));
+    const tlIstanti = conOra.filter(ev => ev.tipo !== 'appuntamento').map(ev => tlMinuti(ev.ora));
+    let ultimaBaseTesto = -Infinity, ultimaBaseAffiancata = -Infinity;
     conOra.forEach(ev => {
       const inizio = tlMinuti(ev.ora);
       if (ev.tipo === 'appuntamento') {
-        let fine = tlMinuti(ev.oraFine);
-        if (fine == null || fine <= inizio) fine = inizio + 60; // difesa: almeno 1h
+        const fine = tlFineAppt(ev);   // difesa: almeno 1h
+        const affiancato = tlIstanti.some(m => m >= inizio && m < fine);
         const top = inizio / 60 * TL_H;
         const alt = Math.max((fine - inizio) / 60 * TL_H, 26);
         const b = document.createElement('div'); b.className = 'caltl-appt';
         b.style.top = top + 'px'; b.style.height = alt + 'px';
-        b.style.left = (TL_GUTTER + 8) + 'px'; b.style.right = '10px';
+        b.style.left = (TL_GUTTER + 8) + 'px'; b.style.right = affiancato ? '50%' : '10px';
         b.style.background = ev.colore + '22'; b.style.borderLeftColor = ev.colore;
         b.innerHTML = '<div class="caltl-appt-tit">' + escapeHtml(ev.titolo) + '</div>' +
           '<div class="caltl-appt-ore">' + tlHhmm(inizio) + ' – ' + tlHhmm(fine) + '</div>';
@@ -3220,11 +3228,17 @@
         body.appendChild(b);
       } else {
         let top = inizio / 60 * TL_H - 9;
-        if (top < ultimaBaseTesto + 4) top = ultimaBaseTesto + 4; // evita sovrapposizioni testo
-        ultimaBaseTesto = top + 22;
+        const affiancato = tlBlocchi.some(b => inizio >= b.i && inizio < b.f);
+        if (affiancato) {
+          if (top < ultimaBaseAffiancata + 4) top = ultimaBaseAffiancata + 4;
+          ultimaBaseAffiancata = top + 22;
+        } else {
+          if (top < ultimaBaseTesto + 4) top = ultimaBaseTesto + 4; // evita sovrapposizioni testo
+          ultimaBaseTesto = top + 22;
+        }
         const r = document.createElement('div'); r.className = 'caltl-inst'; r.style.color = ev.colore;
         if (ev.fatto) r.classList.add('caltl-fatto');
-        r.style.top = top + 'px'; r.style.left = (TL_GUTTER + 6) + 'px'; r.style.right = '10px';
+        r.style.top = top + 'px'; r.style.left = affiancato ? '51%' : (TL_GUTTER + 6) + 'px'; r.style.right = '10px';
         r.innerHTML = '<span style="display:inline-flex;">' + svg(ico(ev.tipo === 'scadenza' ? 'alarm' : 'bell'), 14) + '</span>' +
           '<span class="caltl-inst-ora">' + tlHhmm(inizio) + '</span>' +
           '<span class="caltl-inst-tit">' + escapeHtml(ev.titolo) + '</span>';
