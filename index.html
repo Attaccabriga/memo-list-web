@@ -87,6 +87,22 @@
   .item .qta { color:var(--muted); font-size:13px; background:#1b1f42; padding:3px 8px; border-radius:8px; }
   .item .del { background:none; border:none; color:var(--danger); cursor:pointer; display:inline-flex; padding:4px; }
   .addbar { display:flex; gap:10px; margin-top:14px; }
+  /* [GIORNO DA FARE 24/09] Giorno facoltativo dei Da fare: stesse scelte dell'app
+     (components/CampoGiorno), Nessuno / Oggi / Domani / Scegli... */
+  .dg-riga { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:10px; }
+  .dg-lab { display:inline-flex; align-items:center; gap:5px; font-size:11px; color:rgba(255,255,255,.45); text-transform:uppercase; letter-spacing:.5px; margin-right:4px; }
+  .dg-chip { background:none; border:1px solid rgba(255,255,255,.18); border-radius:999px; padding:5px 12px; font-size:13px; color:rgba(255,255,255,.85); cursor:pointer; font-family:inherit; }
+  .dg-chip:hover { border-color:rgba(255,255,255,.35); }
+  .dg-chip.on { border-color:var(--tipo-todo); color:var(--tipo-todo); }
+  .dg-data { position:absolute; width:1px; height:1px; opacity:0; pointer-events:none; }
+  .task-giorno { display:flex; align-items:center; gap:5px; font-size:12px; color:rgba(255,255,255,.5); margin-top:3px; }
+  .item.task-edit { flex-wrap:wrap; background:#0f1a30; border:1px solid rgba(79,157,235,.45); border-radius:12px; padding:12px; margin:8px 0; }
+  .dafare-nuovo-box { background:#0f1a30; border:1px solid #243052; border-radius:12px; padding:14px; margin-top:18px; }
+  .dafare-nuovo-box .addbar { margin-top:0; }
+  /* Mentre un Da fare e' in modifica il riquadro Aggiungi sparisce (Aldo, 24/09):
+     niente due caselle aperte insieme. Ricompare da solo quando la modifica finisce. */
+  #dafare-task-container:has(.task-edit) ~ .dafare-nuovo-box { display:none; }
+  .item.task-edit .dg-riga { flex-basis:100%; margin-top:6px; }
   .addbar .field { margin:0; }
   .back { background:none; border:none; color:var(--blue); cursor:pointer; font-size:15px; padding:6px 0; display:flex; align-items:center; gap:2px; }
   .center { text-align:center; }
@@ -747,11 +763,15 @@
         </div>
         <div id="dafare-task-container"></div>
         <div id="dafare-task-vuoto" class="muted center hidden" style="padding:16px;">Nessuna attività. Aggiungine una!</div>
+        <!-- [GIORNO DA FARE 24/09] riquadro a parte (Aldo): qui si crea, sopra si consulta -->
+        <div class="dafare-nuovo-box">
         <div class="addbar">
           <input id="dafare-nuovo-task" class="field" placeholder="Aggiungi attività…" />
           <button id="dafare-add-task" class="btn btn-azione"></button>
         </div>
+        <div id="dafare-giorno-nuovo" class="dg-riga"></div>
         <p class="muted" style="margin-top:8px;">Suggerimento: scrivi e premi Invio per aggiungere in serie.</p>
+        </div>
         </div><!-- /#dafare-task-body -->
       </div>
       </div><!-- /#dafare-grid -->
@@ -5176,6 +5196,7 @@
     t.style.display = 'inline-flex'; t.style.alignItems = 'center'; t.style.gap = '9px';
     t.innerHTML = catIconHtml(c.icona, 20) + '<span>' + escapeHtml(c.nome || '(senza nome)') + '</span>';
     $('dafare-sort-sel').value = ordineTodo;
+    giornoNuovoTask = null; renderGiornoNuovoTask();   // [GIORNO DA FARE 24/09]
     aggiornaVisibilitaColonneDafare();
     await caricaTask();
     if (!dafareWide()) $('dafare-nuovo-task').focus();
@@ -5193,14 +5214,54 @@
     renderTaskView(div, t);
     return div;
   }
+  // [GIORNO DA FARE 24/09] Il giorno facoltativo di un Da fare: 'GG/MM/AAAA' o null,
+  // come todos.data e come CampoGiorno nell'app. «Scegli...» apre il calendario del
+  // browser, lo stesso di Memo e Scadenze sul sito (una data si sceglie in un modo solo).
+  function giornoFra(n) { const d = new Date(); return calFmt(new Date(d.getFullYear(), d.getMonth(), d.getDate() + n)); }
+  function campoGiornoWeb(cont, valore, onCambia, etichetta) {
+    cont.innerHTML = '';
+    const oggi = giornoFra(0), domani = giornoFra(1);
+    const altro = valore && valore !== oggi && valore !== domani ? valore : null;
+    const lab = document.createElement('span'); lab.className = 'dg-lab';
+    lab.innerHTML = svg(ico('calendar'), 13) + '<span>' + etichetta + '</span>';
+    cont.appendChild(lab);
+    const chip = (testo, attivo, fai) => {
+      const b = document.createElement('button'); b.type = 'button';
+      b.className = 'dg-chip' + (attivo ? ' on' : ''); b.textContent = testo;
+      b.onclick = fai; cont.appendChild(b); return b;
+    };
+    chip('Nessuno', !valore, () => onCambia(null));
+    chip('Oggi', valore === oggi, () => onCambia(oggi));
+    chip('Domani', valore === domani, () => onCambia(domani));
+    const inp = document.createElement('input'); inp.type = 'date'; inp.className = 'dg-data';
+    inp.value = dataAppToWeb(valore || '');
+    inp.onchange = () => { if (inp.value) onCambia(dataWebToApp(inp.value)); };
+    const sc = chip(altro ? altro + ' ✎' : 'Scegli…', !!altro, () => {
+      try { inp.showPicker(); } catch (e) { inp.style.cssText = ''; inp.className = 'field'; inp.focus(); }
+    });
+    sc.style.position = 'relative'; sc.appendChild(inp);
+  }
+  let giornoNuovoTask = null;   // giorno scelto per il PROSSIMO Da fare; dopo l'aggiunta torna a null (Aldo, 24/09)
+  function renderGiornoNuovoTask() {
+    const c = $('dafare-giorno-nuovo'); if (!c) return;
+    campoGiornoWeb(c, giornoNuovoTask, v => { giornoNuovoTask = v; renderGiornoNuovoTask(); $('dafare-nuovo-task').focus(); }, 'Giorno (facoltativo)');
+  }
+
   function renderTaskView(div, t) {
     div.innerHTML = '';
+    div.classList.remove('task-edit');
     const chk = document.createElement('input');
     chk.type = 'checkbox'; chk.className = 'chk'; chk.checked = !!t.completato;
     chk.onchange = () => toggleTask(t.id, chk.checked);
     const nome = document.createElement('div');
     nome.className = 'nome' + (t.completato ? ' done' : '');
     nome.textContent = t.testo;
+    // [GIORNO DA FARE 24/09] il giorno sotto il testo, come nell'app
+    if (t.data) {
+      const g = document.createElement('div'); g.className = 'task-giorno';
+      g.innerHTML = svg(ico('calendar'), 13) + '<span>' + escapeHtml(t.data) + '</span>';
+      nome.appendChild(g);
+    }
     const edit = document.createElement('button');
     edit.className = 'del'; edit.style.color = 'var(--blue)';
     edit.innerHTML = svg(IC.pencil, 18); edit.setAttribute('data-tip', 'Modifica');
@@ -5232,6 +5293,8 @@
   }
   function renderTaskEdit(div, t) {
     div.innerHTML = '';
+    div.classList.add('task-edit');
+    let giornoEdit = t.data || null;   // [GIORNO DA FARE 24/09]
     const input = document.createElement('input');
     input.className = 'field'; input.style.margin = '0'; input.style.flex = '1'; input.value = t.testo;
     const salva = document.createElement('button');
@@ -5240,8 +5303,12 @@
     annulla.className = 'del'; annulla.innerHTML = svg(IC.x, 18); annulla.title = 'Annulla';
     const doSave = async () => {
       const nuovo = input.value.trim();
-      if (!nuovo || nuovo === t.testo) { div.replaceWith(rigaTask(t)); return; }
-      const { error } = await sb.from('todos').update({ testo: nuovo }).eq('id', t.id);
+      // [GIORNO DA FARE 24/09] si scrive solo cio' che e' cambiato (testo e/o giorno)
+      const modifiche = {};
+      if (nuovo && nuovo !== t.testo) modifiche.testo = nuovo;
+      if ((t.data || null) !== giornoEdit) modifiche.data = giornoEdit;
+      if (!Object.keys(modifiche).length) { div.replaceWith(rigaTask(t)); return; }
+      const { error } = await sb.from('todos').update(modifiche).eq('id', t.id);
       if (error) { homeToast('Errore modifica: ' + error.message); return; }
       mostraPromemoriaHint();
       await caricaTask();
@@ -5250,6 +5317,10 @@
     annulla.onclick = () => div.replaceWith(rigaTask(t));
     input.addEventListener('keydown', e => { if (e.key === 'Enter') doSave(); else if (e.key === 'Escape') div.replaceWith(rigaTask(t)); });
     div.append(input, salva, annulla);
+    const riga = document.createElement('div'); riga.className = 'dg-riga';
+    const disegnaGiorno = () => campoGiornoWeb(riga, giornoEdit, v => { giornoEdit = v; disegnaGiorno(); input.focus(); }, 'Giorno');
+    disegnaGiorno();
+    div.appendChild(riga);
     input.focus();
   }
 
@@ -5265,7 +5336,7 @@
     if (!catCorrente) return;
     const cont = $('dafare-task-container'); if (!silenzioso) cont.innerHTML = '<p class="muted">Caricamento…</p>';
     const { data, error } = await sb.from('todos')
-      .select('id, testo, completato, completato_il, ordine, condiviso, user_id')
+      .select('id, testo, completato, completato_il, ordine, condiviso, user_id, data')   // [GIORNO DA FARE 24/09] + data
       .eq('categoria', catCorrente.nome)
       .order('ordine', { ascending: true });
     if (error) { cont.innerHTML = '<p class="err">Errore: ' + error.message + '</p>'; return; }
@@ -5308,11 +5379,13 @@
     const maxOrdine = taskCaricati.reduce((m, t) => (typeof t.ordine === 'number' && t.ordine > m ? t.ordine : m), -1);
     const { error } = await sb.from('todos').insert([{
       client_id: uuid(), testo, categoria: catCorrente.nome,
-      completato: false, completato_il: null, ordine: maxOrdine + 1, user_id: userId
+      completato: false, completato_il: null, ordine: maxOrdine + 1, user_id: userId,
+      data: giornoNuovoTask,   // [GIORNO DA FARE 24/09] null = nessun giorno
     }]);
     if (error) { homeToast('Errore aggiunta attività: ' + error.message); return; }
     mostraPromemoriaHint();
     $('dafare-nuovo-task').value = '';
+    giornoNuovoTask = null; renderGiornoNuovoTask();   // torna a «Nessuno», come nell'app
     $('dafare-nuovo-task').focus();
     await caricaTask();
   }
