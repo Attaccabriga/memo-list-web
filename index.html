@@ -203,7 +203,22 @@
   .home-oggi-titolo { font-size:13px; font-weight:700; color:var(--muted); letter-spacing:.5px; margin-bottom:8px; }
   .home-oggi-item { display:flex; align-items:center; gap:10px; background:#0f1a30; border-left:3px solid var(--blue); border-radius:8px; padding:8px 10px; margin-bottom:6px; cursor:pointer; }
   .home-oggi-item:hover { background:#13224a; }
-  .home-oggi-ora { color:#e6e6e6; font-size:14px; font-weight:600; min-width:44px; }
+  .home-oggi-ora { color:#e6e6e6; font-size:14px; font-weight:600; min-width:44px; display:flex; flex-direction:column; line-height:1.15; flex:none; }
+  /* [OGGI PER TE 24/09] righe come nell'app: ora di fine / data dello scaduto sotto l'ora,
+     sottocategoria accanto al testo, bollino SCADUTO + tipo + categoria a destra. */
+  .home-oggi-ora small { font-size:10.5px; font-weight:400; color:var(--muted); }
+  .home-oggi-ora .rossa { color:#ff6b6b; }
+  .home-oggi-testo em { font-style:normal; color:var(--muted); font-size:12px; }
+  .home-oggi-dx { display:flex; flex-direction:column; align-items:flex-end; gap:2px; flex:none; }
+  .home-oggi-cat { color:#6f7699; font-size:9.5px; letter-spacing:.8px; }
+  .home-oggi-bollo { color:#ff6b6b; font-size:10px; font-weight:700; letter-spacing:.4px; }
+  .home-oggi-testa { display:flex; align-items:center; gap:10px; }
+  .home-oggi-testa > span:first-child { flex:1; }
+  .home-oggi-org { display:inline-flex; align-items:center; gap:6px; border:1px solid var(--blue); color:var(--blue); background:rgba(79,157,235,.08); border-radius:999px; padding:4px 11px; font-size:12.5px; font-weight:600; letter-spacing:0; cursor:pointer; font-family:inherit; }
+  .home-oggi-org:hover { background:rgba(79,157,235,.18); }
+  .home-oggi-dafare { display:flex; justify-content:space-between; align-items:center; border:1px solid #2a3558; border-radius:8px; padding:8px 10px; margin-bottom:6px; font-size:14px; color:#fff; cursor:pointer; }
+  .home-oggi-dafare:hover { background:#13224a; }
+  .home-oggi-dafare span { color:var(--blue); font-size:16px; }
   .home-oggi-testo { flex:1; color:#fff; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .home-oggi-tag { color:var(--muted); font-size:10px; letter-spacing:.3px; }
   .home-domani-titolo { display:flex; align-items:center; gap:8px; font-size:13px; font-weight:700; color:var(--muted); letter-spacing:.5px; margin:14px 0 8px; }
@@ -1195,6 +1210,7 @@
     'users': '<path d="M5 7a4 4 0 1 0 8 0a4 4 0 1 0 -8 0" /><path d="M3 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /><path d="M21 21v-2a4 4 0 0 0 -3 -3.85" />',
     'wallet': '<path d="M17 8v-3a1 1 0 0 0 -1 -1h-10a2 2 0 0 0 0 4h12a1 1 0 0 1 1 1v3m0 4v3a1 1 0 0 1 -1 1h-12a2 2 0 0 1 -2 -2v-12" /><path d="M20 12v4h-4a2 2 0 0 1 0 -4h4" />',
     'circle-check': '<path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0" /><path d="M9 12l2 2l4 -4" />',
+    'list-check': '<path d="M3.5 5.5l1.5 1.5l2.5 -2.5" /><path d="M3.5 11.5l1.5 1.5l2.5 -2.5" /><path d="M3.5 17.5l1.5 1.5l2.5 -2.5" /><path d="M11 6l9 0" /><path d="M11 12l9 0" /><path d="M11 18l9 0" />',   // [OGGI PER TE 24/09]
     'calendar-event': '<path d="M4 5m0 2a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2z" /><path d="M16 3v4" /><path d="M8 3v4" /><path d="M4 11h16" /><path d="M8 15h2v2h-2z" />',
     'package': '<path d="M12 3l8 4.5v9l-8 4.5l-8 -4.5v-9l8 -4.5" /><path d="M12 12l8 -4.5" /><path d="M12 12v9" /><path d="M12 12l-8 -4.5" /><path d="M16 5.25l-8 4.5" />',
     'calendar-month': '<path d="M4 7a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12z" /><path d="M16 3v4" /><path d="M8 3v4" /><path d="M4 11h16" /><path d="M7 14h.013" /><path d="M10.01 14h.005" /><path d="M13.01 14h.005" /><path d="M16.015 14h.005" /><path d="M13.015 17h.005" /><path d="M7.01 17h.005" /><path d="M10.01 17h.005" />',
@@ -1718,18 +1734,7 @@
       scadenze: scad.filter(s => !s.completata).length,
     });
 
-    const memoOggi = memo.filter(m => m.data === oggi).map(m => ({ testo: m.testo, ora: m.ora, colore: TIPO.memo, etichetta: 'Memo', key: 'memo', id: m.id, categoria: m.categoria, fatto: !!m.completato }));
-    const scadOggi = scad.filter(s => s.data === oggi).map(s => ({ testo: s.titolo, ora: s.ora, colore: TIPO.scadenza, etichetta: 'Scadenza', key: 'scadenze', id: s.id, categoria: s.categoria, sottocategoria: s.sottocategoria, fatto: !!s.completata }));
-    const appOggiItems = appOggi.map(a => ({ testo: a.titolo, ora: a.ora, colore: TIPO.appuntamento, etichetta: 'Appuntamento', key: 'appuntamenti', id: a.id, fatto: false, app: a }));   // [GPS] app = riga grezza per il badge
-    const itemsOggi = [...scadOggi, ...appOggiItems, ...memoOggi].sort((a, b) => { if (!!a.fatto !== !!b.fatto) return a.fatto ? 1 : -1; return (a.ora || '').localeCompare(b.ora || ''); });
-    const domP = domaniGGMMAAAA();
-    const itemsDomaniP = [
-      ...scad.filter(s => s.data === domP).map(s => ({ testo: s.titolo, ora: s.ora, colore: TIPO.scadenza, etichetta: 'Scadenza', key: 'scadenze', id: s.id, categoria: s.categoria, sottocategoria: s.sottocategoria, fatto: !!s.completata })),
-      ...app.filter(a => a.data === domP).map(a => ({ testo: a.titolo, ora: a.ora, colore: TIPO.appuntamento, etichetta: 'Appuntamento', key: 'appuntamenti', id: a.id, fatto: false, app: a })),
-      ...memo.filter(m => m.data === domP).map(m => ({ testo: m.testo, ora: m.ora, colore: TIPO.memo, etichetta: 'Memo', key: 'memo', id: m.id, categoria: m.categoria, fatto: !!m.completato })),
-    ].sort((a, b) => (a.ora || '').localeCompare(b.ora || ''));
-    await caricaPrevisioniPartenzaWeb();   // [GPS] idem sul percorso di riserva
-    renderOggiPerTe(oggiBox, itemsOggi, itemsDomaniP);
+    caricaOggiPerTe(oggiBox, oggi);   // [OGGI PER TE 24/09] anche il paracadute usa la stessa strada (prima la lista era scritta due volte)
 
     let spesaCount = 0;
     const listeIds = ((listeRes && listeRes.data) || []).map(l => l.id);
@@ -1755,71 +1760,156 @@
     });
   }
 
-  // [OGGI PER TE] Costruisce la lista cliccabile del giorno con id/categoria/sottocategoria
-  // (la RPC get_home_data non li fornisce, ma servono per l'apertura mirata dell'elemento).
-  async function caricaOggiPerTe(oggiBox, oggi) {
+  // ====== [OGGI PER TE 24/09] LA REGOLA, COPIATA DALL'APP ======
+  // Copia fedele di lib/eventiCalendario.ts dell'app (eventiPriorita + eventiDomani),
+  // con gli STESSI NOMI apposta: se la regola cambia nell'app, si cambia qui.
+  // Prima la lista era scritta due volte (strada normale + paracadute) e si era
+  // allontanata dall'app: niente scaduti, fatti barrati invece che tolti.
+  // Decisioni di Aldo (24/09): Da fare e attivita' in fondo; Da fare di un giorno
+  // passato e non fatto = scaduto; attivita' solo del loro giorno; Domani mostra tutto.
+  const OPT_ETICHETTA = { memo: 'MEMO', scadenza: 'SCADENZA', appuntamento: 'APPUNTAMENTO', todo: 'DA FARE', attivita: 'ATTIVITÀ' };
+  const OPT_COLORE = { memo: TIPO.memo, scadenza: TIPO.scadenza, appuntamento: TIPO.appuntamento, todo: TIPO.todo, attivita: '#C9B28E' };
+
+  // Senza ora vale 23:59: una cosa di oggi senza ora scade solo a mezzanotte.
+  function optIstantePassato(gg, ora, adesso) {
+    const p = (gg || '').split('/'); if (p.length !== 3) return false;
+    const hm = (ora || '23:59').split(':');
+    return new Date(parseInt(p[2], 10), parseInt(p[1], 10) - 1, parseInt(p[0], 10), parseInt(hm[0], 10) || 0, parseInt(hm[1], 10) || 0) < adesso;
+  }
+  function optISO(gg) { const p = (calNorm(gg || '') || '').split('/'); return p.length === 3 ? p[2] + '-' + p[1] + '-' + p[0] : ''; }
+  function optGruppo(e) { return (e.tipo === 'todo' || e.tipo === 'attivita') ? 1 : 0; }   // in fondo
+  function optEvento(tipo, r) {
+    const senzaOra = (tipo === 'todo' || tipo === 'attivita');
+    return {
+      tipo, id: r.id,
+      testo: ((tipo === 'appuntamento' || tipo === 'scadenza') ? r.titolo : r.testo) || '',
+      ora: senzaOra ? null : (r.ora || null),
+      oraFine: tipo === 'appuntamento' ? (r.ora_fine || null) : null,
+      data: calNorm(r.data),
+      categoria: r.categoria || null,
+      sottocategoria: tipo === 'scadenza' ? (r.sottocategoria || null) : null,
+      scaduto: false,
+      app: tipo === 'appuntamento' ? r : null,   // [GPS] riga grezza per la pillola
+    };
+  }
+  // «Oggi per te»: oggi + arretrati scaduti non fatti.
+  function eventiPriorita(d) {
+    const adesso = new Date(); const oggiIt = calFmt(adesso); const out = [];
+    const includi = (gg, ora) => { const g = calNorm(gg); const scaduto = optIstantePassato(g, ora, adesso); return { ok: scaduto || g === oggiIt, scaduto }; };
+    // Gli appuntamenti sono eventi: solo quelli di oggi, mai "scaduti".
+    (d.appuntamenti || []).forEach(a => { if (a && calNorm(a.data) === oggiIt) out.push(optEvento('appuntamento', a)); });
+    (d.scadenze || []).forEach(x => { if (!x || x.completata) return; const r = includi(x.data, x.ora || null); if (!r.ok) return; const e = optEvento('scadenza', x); e.scaduto = r.scaduto; out.push(e); });
+    (d.memo || []).forEach(x => { if (!x || x.completato) return; const r = includi(x.data, x.ora || null); if (!r.ok) return; const e = optEvento('memo', x); e.scaduto = r.scaduto; out.push(e); });
+    (d.todos || []).forEach(x => { if (!x || x.completato || !x.data) return; const r = includi(x.data, null); if (!r.ok) return; const e = optEvento('todo', x); e.scaduto = r.scaduto; out.push(e); });
+    (d.attivita || []).forEach(x => { if (!x || x.fatto || calNorm(x.data) !== oggiIt) return; out.push(optEvento('attivita', x)); });
+    out.sort((x, y) => {
+      if (x.scaduto !== y.scaduto) return x.scaduto ? -1 : 1;
+      const dx = optISO(x.data), dy = optISO(y.data);
+      if (dx < dy) return -1; if (dx > dy) return 1;
+      const gx = optGruppo(x), gy = optGruppo(y); if (gx !== gy) return gx - gy;
+      return (x.ora || '').localeCompare(y.ora || '');
+    });
+    return out;
+  }
+  // «Domani»: tutto quello che e' di domani e non e' fatto.
+  function eventiDomani(d) {
+    const t = new Date(); t.setDate(t.getDate() + 1);   // setDate, non +24h: regge il cambio dell'ora legale
+    const dom = calFmt(t); const is = x => calNorm(x) === dom; const out = [];
+    (d.scadenze || []).forEach(x => { if (x && !x.completata && is(x.data)) out.push(optEvento('scadenza', x)); });
+    (d.appuntamenti || []).forEach(x => { if (x && is(x.data)) out.push(optEvento('appuntamento', x)); });
+    (d.memo || []).forEach(x => { if (x && !x.completato && is(x.data)) out.push(optEvento('memo', x)); });
+    (d.todos || []).forEach(x => { if (x && !x.completato && x.data && is(x.data)) out.push(optEvento('todo', x)); });
+    (d.attivita || []).forEach(x => { if (x && !x.fatto && is(x.data)) out.push(optEvento('attivita', x)); });
+    return out.sort((x, y) => { const gx = optGruppo(x), gy = optGruppo(y); if (gx !== gy) return gx - gy; return (x.ora || '').localeCompare(y.ora || ''); });
+  }
+
+  // Nomi da mostrare: le scadenze salvano un CODICE ('lavoro'), memo e Da fare un NOME.
+  function optNomeCat(tipo, cat) {
+    if (!cat) return '';
+    if (tipo === 'scadenza') { const c = (scadTree || SCAD_TREE).find(x => x.id === cat); return c ? c.nome : cat; }
+    return cat;
+  }
+  function optNomeSub(cat, sub) {
+    const c = (scadTree || SCAD_TREE).find(x => x.id === cat);
+    const s = c && (c.sub || []).find(x => x.id === sub);
+    return s ? s.nome : sub;
+  }
+  // "Mar 22/09/2026", come dataConGiorno dell'app.
+  function optDataBreve(gg) {
+    const p = (gg || '').split('/'); if (p.length !== 3) return gg || '';
+    const g = GIORNI_IT[new Date(parseInt(p[2], 10), parseInt(p[1], 10) - 1, parseInt(p[0], 10)).getDay()] || '';
+    return (g ? g.charAt(0).toUpperCase() + g.slice(1, 3) + ' ' : '') + gg;
+  }
+
+  // Dove porta il tocco su una riga.
+  let dafareApriPendente = null;   // { nome categoria, id } consumato da caricaCategorie
+  function optApri(it) {
+    if (it.tipo === 'attivita') { calApriGiorno(it.data, 'organizza'); return; }
+    if (it.tipo === 'todo') { dafareApriPendente = { nome: it.categoria, id: String(it.id) }; switchModulo('dafare'); return; }
+    calVaiAElemento({ modulo: it.tipo === 'memo' ? 'memo' : it.tipo === 'appuntamento' ? 'appuntamenti' : 'scadenze', id: it.id, categoria: it.categoria, sottocategoria: it.sottocategoria });
+  }
+
+  async function caricaOggiPerTe(oggiBox) {
     try {
-      const [mRes, sRes, aRes] = await Promise.all([
+      const [mRes, sRes, aRes, tRes, atRes] = await Promise.all([
         sb.from('todos_scadenza').select('id, testo, data, ora, completato, categoria'),
         sb.from('scadenze').select('id, titolo, data, ora, completata, categoria, sottocategoria'),
         sb.from('appuntamenti').select('id, client_id, titolo, data, ora, ora_fine, luogo, partito_at, mezzo, luogo_lat, luogo_lng, durata_stimata_min, durata_stimata_origine, durata_stimata_per'),   // [GPS] badge + [COORDINATE] mappe + [STIMA DB] pillola di percorrenza
+        sb.from('todos').select('id, testo, data, completato, categoria'),   // [OGGI PER TE 24/09] data = giorno facoltativo
+        sb.from('attivita').select('id, testo, data, fatto'),                 // [OGGI PER TE 24/09]
       ]);
       if (!oggiBox.isConnected) return;
-      const memo = (mRes && mRes.data) || [], scad = (sRes && sRes.data) || [], app = (aRes && aRes.data) || [];
-      const memoOggi = memo.filter(m => m.data === oggi).map(m => ({ testo: m.testo, ora: m.ora, colore: TIPO.memo, etichetta: 'Memo', key: 'memo', id: m.id, categoria: m.categoria, fatto: !!m.completato }));
-      const scadOggi = scad.filter(s => s.data === oggi).map(s => ({ testo: s.titolo, ora: s.ora, colore: TIPO.scadenza, etichetta: 'Scadenza', key: 'scadenze', id: s.id, categoria: s.categoria, sottocategoria: s.sottocategoria, fatto: !!s.completata }));
-      const appOggiItems = app.filter(a => a.data === oggi).map(a => ({ testo: a.titolo, ora: a.ora, colore: TIPO.appuntamento, etichetta: 'Appuntamento', key: 'appuntamenti', id: a.id, fatto: false, app: a }));   // [GPS] app = riga grezza per il badge
-      // da fare in cima, fatti (barrati) in fondo; a parità, per orario
-      const items = [...scadOggi, ...appOggiItems, ...memoOggi].sort((a, b) => { if (!!a.fatto !== !!b.fatto) return a.fatto ? 1 : -1; return (a.ora || '').localeCompare(b.ora || ''); });
-      // Programma di domani (stessi tipi di oggi): serve a organizzarsi la sera.
-      const dom = domaniGGMMAAAA();
-      const itemsDomani = [
-        ...scad.filter(s => s.data === dom).map(s => ({ testo: s.titolo, ora: s.ora, colore: TIPO.scadenza, etichetta: 'Scadenza', key: 'scadenze', id: s.id, categoria: s.categoria, sottocategoria: s.sottocategoria, fatto: !!s.completata })),
-        ...app.filter(a => a.data === dom).map(a => ({ testo: a.titolo, ora: a.ora, colore: TIPO.appuntamento, etichetta: 'Appuntamento', key: 'appuntamenti', id: a.id, fatto: false, app: a })),
-        ...memo.filter(m => m.data === dom).map(m => ({ testo: m.testo, ora: m.ora, colore: TIPO.memo, etichetta: 'Memo', key: 'memo', id: m.id, categoria: m.categoria, fatto: !!m.completato })),
-      ].sort((a, b) => (a.ora || '').localeCompare(b.ora || ''));
+      const d = {
+        memo: (mRes && mRes.data) || [], scadenze: (sRes && sRes.data) || [], appuntamenti: (aRes && aRes.data) || [],
+        todos: (tRes && tRes.data) || [], attivita: (atRes && atRes.data) || [],
+      };
+      const nDaFare = d.todos.filter(x => !x.completato).length;
       await caricaPrevisioniPartenzaWeb();   // [GPS] senza, in Home la pillola di partenza non avrebbe dati
-      renderOggiPerTe(oggiBox, items, itemsDomani);
+      renderOggiPerTe(oggiBox, eventiPriorita(d), eventiDomani(d), nDaFare);
     } catch (e) { /* silenzioso: i conteggi restano comunque */ }
   }
 
   // Sostituisce lo scheletro di "Oggi per te" col contenuto reale.
-  function renderOggiPerTe(oggiBox, itemsOggi, itemsDomani) {
-    const domani = (itemsDomani || []);
-    const mostraDomani = domani.length > 0 && eOraDiMostrareDomani();
-    if (itemsOggi.length === 0 && !mostraDomani) {
-      oggiBox.innerHTML = '<div class="home-oggi-vuoto"><span style="color:#5DCAA5;display:inline-flex;">' + svg(CAT_ICONS['circle-check'], 18) + '</span><span>Nessuna scadenza per oggi</span></div>';
-      return;
-    }
-    const riga = (it) =>
-      '<div class="home-oggi-item' + (it.fatto ? ' fatto' : '') + '" data-key="' + it.key + '" style="border-left-color:' + it.colore + '">' +
-      (it.ora ? '<span class="home-oggi-ora">' + escapeHtml(it.ora) + '</span>' : '') +
-      '<span class="home-oggi-testo">' + escapeHtml(it.testo || '') + '</span>' +
-      '<span class="home-oggi-tag">' + it.etichetta + '</span></div>';
+  function renderOggiPerTe(oggiBox, itemsOggi, itemsDomani, nDaFare) {
+    const domani = itemsDomani || [];
+    const testa = '<div class="home-oggi-titolo home-oggi-testa"><span>Oggi per te' + (itemsOggi.length ? ' (' + itemsOggi.length + ')' : '') + '</span>' +
+      '<button type="button" class="home-oggi-org">' + svg(ico('list-check'), 15) + '<span>Organizza giornata</span></button></div>';
+    const riga = (it) => {
+      let sx = '';
+      if (it.ora) sx += '<span' + (it.scaduto ? ' class="rossa"' : '') + '>' + escapeHtml(it.ora) + '</span>';
+      if (it.oraFine) sx += '<small>' + escapeHtml(it.oraFine) + '</small>';
+      if (it.scaduto) sx += '<small>' + escapeHtml(optDataBreve(it.data)) + '</small>';
+      const sub = it.sottocategoria ? '<em>  · ' + escapeHtml(optNomeSub(it.categoria, it.sottocategoria)) + '</em>' : '';
+      const cat = (it.categoria && it.tipo !== 'appuntamento') ? '<span class="home-oggi-cat">' + escapeHtml(optNomeCat(it.tipo, it.categoria).toUpperCase()) + '</span>' : '';
+      return '<div class="home-oggi-item" style="border-left-color:' + OPT_COLORE[it.tipo] + '">' +
+        '<span class="home-oggi-ora">' + sx + '</span>' +
+        '<span class="home-oggi-testo">' + escapeHtml(it.testo) + sub + '</span>' +
+        '<span class="home-oggi-dx">' + (it.scaduto ? '<span class="home-oggi-bollo">SCADUTO</span>' : '') +
+          '<span class="home-oggi-tag">' + OPT_ETICHETTA[it.tipo] + '</span>' + cat + '</span></div>';
+    };
 
-    let h = '';
-    if (itemsOggi.length > 0) {
-      h += '<div class="home-oggi-titolo">Oggi per te (' + itemsOggi.length + ')</div>';
-      itemsOggi.forEach(it => { h += riga(it); });
-    } else {
-      h += '<div class="home-oggi-vuoto" style="margin-bottom:4px;"><span style="color:#5DCAA5;display:inline-flex;">' + svg(CAT_ICONS['circle-check'], 18) + '</span><span>Nessuna scadenza per oggi</span></div>';
-    }
-    if (mostraDomani) {
+    let h = testa;
+    if (nDaFare > 0) h += '<div class="home-oggi-dafare">Cose da fare: ' + nDaFare + ' <span>›</span></div>';
+    if (itemsOggi.length > 0) itemsOggi.forEach(it => { h += riga(it); });
+    else h += '<div class="home-oggi-vuoto" style="margin-bottom:4px;"><span style="color:#5DCAA5;display:inline-flex;">' + svg(CAT_ICONS['circle-check'], 18) + '</span><span>Nessuna priorità oggi</span></div>';
+    if (domani.length > 0) {
       h += '<div class="home-domani-titolo">Domani (' + domani.length + ')</div>';
       domani.forEach(it => { h += riga(it); });
     }
     oggiBox.innerHTML = h;
 
-    const tutti = itemsOggi.concat(mostraDomani ? domani : []);
+    oggiBox.querySelector('.home-oggi-org').onclick = () => calApriGiorno(calFmt(new Date()), 'organizza');
+    const df = oggiBox.querySelector('.home-oggi-dafare'); if (df) df.onclick = () => switchModulo('dafare');
+    const tutti = itemsOggi.concat(domani);
     oggiBox.querySelectorAll('.home-oggi-item').forEach((el, i) => {
       const it = tutti[i];
       if (!it) return;
-      el.onclick = () => calVaiAElemento({ modulo: it.key, id: it.id, categoria: it.categoria, sottocategoria: it.sottocategoria });
-      // [GPS] badge di partenza compatto, prima dell'etichetta "Appuntamento"
+      el.onclick = () => optApri(it);
+      // [GPS] badge di partenza compatto, prima della colonna di destra
       if (it.app) {
         const pil = costruisciPillolaGpsHomeWeb(it.app)          // oggi: badge vivo
                  || costruisciPillolaAnteprimaHomeWeb(it.app);   // entro 24h: "parti verso le..."
-        if (pil) el.insertBefore(pil, el.querySelector('.home-oggi-tag'));
+        if (pil) el.insertBefore(pil, el.querySelector('.home-oggi-dx'));
       }
     });
     avviaTimerBadgeGpsWeb();   // [GPS] il countdown scende da solo anche in Home
@@ -2807,6 +2897,10 @@
     const root = $('cal-root'); root.innerHTML = '<p class="muted">Caricamento…</p>';
     const oggi = new Date();
     calMese = oggi.getMonth(); calAnno = oggi.getFullYear(); calSelGG = calFmt(oggi);
+    if (calGiornoPendente) {   // [OGGI PER TE 24/09] richiesto dalla Home
+      const p = (calGiornoPendente.gg || '').split('/'); calGiornoPendente = null;
+      if (p.length === 3) { calVista = 'giorno'; calSelGG = p.join('/'); calMese = parseInt(p[1], 10) - 1; calAnno = parseInt(p[2], 10); }
+    }
     const [aRes, sRes, mRes] = await Promise.all([
       sb.from('appuntamenti').select('id, titolo, data, ora, ora_fine'),
       sb.from('scadenze').select('id, titolo, data, ora, completata, categoria, sottocategoria'),
@@ -2986,6 +3080,11 @@
   // aprono solo la sezione (verranno aggiunti nei prossimi step).
   const CAL_DEEP = { appuntamenti: true, memo: true, scadenze: true };
   let calApriTarget = null; // { modulo, id, categoria, sottocategoria } in attesa di evidenziazione dopo il render
+  // [OGGI PER TE 24/09] Apre il Calendario sulla vista Giorno di una data precisa.
+  // `modo` = 'organizza' per il bottone e le attivita': finche' il sito non ha la vista
+  // Organizza (passo successivo) apre la vista Giorno normale.
+  let calGiornoPendente = null;
+  function calApriGiorno(gg, modo) { calGiornoPendente = { gg: calNorm(gg), modo: modo || 'ore' }; switchModulo('calendario'); }
   function calVaiAElemento(ev) {
     if (ev && ev.id != null && CAL_DEEP[ev.modulo]) calApriTarget = { modulo: ev.modulo, id: String(ev.id), categoria: ev.categoria, sottocategoria: ev.sottocategoria };
     switchModulo(ev.modulo);
@@ -4962,6 +5061,13 @@
       });
     const cats = [...CAT_PREDEFINITE, ...custom];
     categorieCaricate = cats;
+    // [OGGI PER TE 24/09] Arrivo dalla Home toccando un Da fare: apri la sua categoria
+    // e lascia a renderTaskList il compito di evidenziarlo.
+    if (dafareApriPendente) {
+      const pend = dafareApriPendente; dafareApriPendente = null;
+      const c = cats.find(x => x.nome === pend.nome);
+      if (c) { calApriTarget = { modulo: 'dafare', id: pend.id }; apriCategoria(c); }
+    }
 
     // Conteggi per categoria (come l'app): totale + quanti sono ancora da fare.
     const totali = {}, daFare = {};
@@ -5069,6 +5175,7 @@
   function rigaTask(t) {
     const div = document.createElement('div');
     div.className = 'item';
+    div.setAttribute('data-cal-id', String(t.id));   // [OGGI PER TE 24/09] per l'evidenziazione
     renderTaskView(div, t);
     return div;
   }
@@ -5159,6 +5266,7 @@
     cont.innerHTML = '';
     $('dafare-task-vuoto').classList.toggle('hidden', arr.length > 0);
     ordinaTask(arr).forEach(t => cont.appendChild(rigaTask(t)));
+    calEvidenziaSePendente('dafare', cont);   // [OGGI PER TE 24/09] Da fare aperto dalla Home
   }
 
   // Sposta un task su/giù (saltando i completati) e riassegna 'ordine', come l'app.
